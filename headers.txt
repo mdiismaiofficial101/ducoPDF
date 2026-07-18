@@ -1,0 +1,21 @@
+HTTP/1.1 307 Moved
+Connection: close
+Content-length: 167
+Location: /cpsess1296919587/frontend/jupiter/index.html?login=1&post_login=31480781498791
+Set-Cookie: cprelogin=no; HttpOnly; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/; port=2083; secure
+Set-Cookie: cpsession=cybronet%3a95ajQTlvdzEoyQve%2cf4f60e9264bd3af36e01152d6e47d51e; HttpOnly; path=/; port=2083; secure
+Set-Cookie: roundcube_sessid=expired; HttpOnly; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/; port=2083; secure
+Set-Cookie: roundcube_sessauth=expired; HttpOnly; domain=megalosaurus.nekoserver.asia; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/; port=2083; secure
+Set-Cookie: PPA_ID=expired; HttpOnly; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/; port=2083; secure
+Content-type: text/html; charset="utf-8"
+Cache-Control: no-cache, no-store, must-revalidate, private
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset="utf-8"
+Date: Thu, 09 Jul 2026 22:22:48 GMT
+Cache-Control: no-cache, no-store, must-revalidate, private
+Pragma: no-cache
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Content-Length: 303230
+

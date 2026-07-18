@@ -1,0 +1,6 @@
+{
+  "name": "DocuPDF",
+  "description": "A comprehensive online PDF tool platform inspired by iLovePDF, featuring merge, split, compress, convert, and organize capabilities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

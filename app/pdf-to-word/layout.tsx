@@ -1,0 +1,22 @@
+import type { Metadata } from 'next';
+import { getPageSEO } from '@/lib/seo';
+import JsonLd from '@/components/JsonLd';
+import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
+
+export const metadata: Metadata = getPageSEO('pdf-to-word');
+
+export default function ToolLayout({ children }: { children: React.ReactNode }) {
+  const seo = getPageSEO('pdf-to-word');
+  const toolName = typeof seo.title === 'string' ? seo.title.split(' - ')[0].split(' | ')[0] : '';
+  return (
+    <>
+      <JsonLd data={generateBreadcrumbSchema([
+        { name: 'Home', url: '/' },
+        { name: 'PDF to Word', url: '/pdf-to-word' },
+      ])} />
+      <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/pdf-to-word')} />
+      {generateToolFAQ('pdf-to-word') && <JsonLd data={generateToolFAQ('pdf-to-word')!} />}
+      {children}
+    </>
+  );
+}
