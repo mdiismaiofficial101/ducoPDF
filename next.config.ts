@@ -2,6 +2,13 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
+  async rewrites() {
+    return [
+      { source: '/cy-amardocupdfonline-100m', destination: '/cy-amardocupdfonline-100m/index.html' },
+      { source: '/admin', destination: '/admin/index.html' },
+    ];
+  },
   async headers() {
     return [
       {
@@ -15,7 +22,26 @@ const nextConfig: NextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
         ],
       },
-
+      {
+        source: '/cy-amardocupdfonline-100m/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://cdnjs.cloudflare.com https://generativelanguage.googleapis.com https://fonts.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
+              "frame-src 'self' https://challenges.cloudflare.com",
+              "connect-src 'self' https://generativelanguage.googleapis.com https://cdnjs.cloudflare.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
+        ],
+      },
     ];
   },
   eslint: {
@@ -24,22 +50,18 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Allow access to remote image placeholder.
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'picsum.photos',
         port: '',
-        pathname: '/**', // This allows any path under the hostname
+        pathname: '/**',
       },
     ],
   },
-
   transpilePackages: ['motion', 'react-pdf', 'pdfjs-dist'],
   webpack: (config, {dev}) => {
-    // HMR is disabled in AI Studio via DISABLE_HMR env var.
-    // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
     if (dev && process.env.DISABLE_HMR === 'true') {
       config.watchOptions = {
         ignored: /.*/,
