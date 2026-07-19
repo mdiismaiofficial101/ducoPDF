@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-const SITE_URL = 'https://docupdf.com';
+const SITE_URL = 'https://cybronetwork.online';
 const SITE_NAME = 'DocuPDF';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/myicon.png`;
 

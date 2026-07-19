@@ -103,7 +103,7 @@ export default function Home() {
             '@type': 'SoftwareApplication',
             name: tool.name,
             description: tool.description,
-            url: `https://docupdf.com${tool.href}`,
+            url: `https://cybronetwork.online${tool.href}`,
             applicationCategory: 'MultimediaApplication',
             operatingSystem: 'Web Browser',
             offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
@@ -114,7 +114,7 @@ export default function Home() {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://docupdf.com' },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://cybronetwork.online' },
         ],
       }} />
       {/* Cinematic Hero Section with Video Background */}

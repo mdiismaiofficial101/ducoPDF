@@ -1,12 +1,15 @@
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: 'Community Questions - DocuPDF',
-  description: 'Browse community questions and answers about PDF processing, conversion, editing, and DocuPDF tools.',
-  robots: { index: true, follow: true },
-  alternates: { canonical: 'https://docupdf.com/community' },
-};
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  return {
+    title: `Question #${id} - DocuPDF Community`,
+    description: 'Ask questions and get answers from the DocuPDF community about PDF tools and techniques.',
+    alternates: { canonical: `https://cybronetwork.online/community/question/${id}` },
+    robots: { index: true, follow: true },
+  };
+}
 
-export default function QuestionLayout({ children }: { children: React.ReactNode }) {
+export default function QuestionIdLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }

@@ -5,7 +5,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `Tool #${id} - DocuPDF`,
     description: 'Use our free online PDF tool to process your documents instantly. 100% secure, client-side processing.',
-    alternates: { canonical: `https://docupdf.com/tool/${id}` },
+    alternates: { canonical: `https://cybronetwork.online/tool/${id}` },
     robots: { index: true, follow: true },
   };
 }

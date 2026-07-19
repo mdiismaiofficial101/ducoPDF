@@ -4,11 +4,11 @@ export const metadata: Metadata = {
   title: 'Ask a Question - DocuPDF Community',
   description: 'Ask a question about PDFs, document processing, or DocuPDF tools. Get answers from the DocuPDF community and experts.',
   robots: { index: true, follow: true },
-  alternates: { canonical: 'https://docupdf.com/community/ask' },
+  alternates: { canonical: 'https://cybronetwork.online/community/ask' },
   openGraph: {
     title: 'Ask a Question - DocuPDF Community',
     description: 'Ask a question about PDFs, document processing, or DocuPDF tools. Get answers from the community.',
-    url: 'https://docupdf.com/community/ask',
+    url: 'https://cybronetwork.online/community/ask',
     siteName: 'DocuPDF',
     locale: 'en_US',
     type: 'website',

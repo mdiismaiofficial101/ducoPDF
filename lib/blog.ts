@@ -137,7 +137,7 @@ export const ALL_TOOLS = [
 ];
 
 export function getBlogSchema(blog: BlogPost) {
-  const siteUrl = 'https://docupdf.com';
+  const siteUrl = 'https://cybronetwork.online';
   const readingTime = calculateReadingTime(blog.content);
 
   return {
