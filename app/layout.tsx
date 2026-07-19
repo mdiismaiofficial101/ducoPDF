@@ -100,6 +100,11 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           .icn-hp:hover svg{animation:icn-pulse .5s ease-in-out}
           .icn-hw:hover svg{animation:icn-wiggle .4s ease-in-out}
         `}</style>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7049109792578274"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="font-sans min-h-screen flex flex-col bg-slate-50 text-slate-900" suppressHydrationWarning>
         <JsonLd data={generateOrganizationSchema()} />
