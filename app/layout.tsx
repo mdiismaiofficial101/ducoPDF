@@ -11,7 +11,7 @@ import Script from 'next/script';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://docupdf.com'),
+  metadataBase: new URL('https://cybronetwork.online'),
   title: {
     default: 'DocuPDF - Free Online PDF Tools | Merge, Split, Compress & Convert PDF',
     template: '%s | DocuPDF',
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'DocuPDF - Free Online PDF Tools | Merge, Split, Compress & Convert PDF',
     description: 'DocuPDF offers 30+ free online PDF tools. Merge, split, compress, convert, rotate, watermark, protect and edit PDFs instantly in your browser. 100% secure, no uploads.',
-    url: 'https://docupdf.com',
+    url: 'https://cybronetwork.online',
     siteName: 'DocuPDF',
     locale: 'en_US',
     type: 'website',
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: 'https://docupdf.com',
+    canonical: 'https://cybronetwork.online',
   },
   verification: {},
   manifest: '/manifest.webmanifest',
@@ -105,6 +105,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7049109792578274"
           crossOrigin="anonymous"
         />
+        <meta name="google-site-verification" content="85-vPsDOw1lvdTydtPzX5XGO_gUkGe1ZIhHVlNfjmZk" />
       </head>
       <body className="font-sans min-h-screen flex flex-col bg-slate-50 text-slate-900" suppressHydrationWarning>
         <JsonLd data={generateOrganizationSchema()} />
