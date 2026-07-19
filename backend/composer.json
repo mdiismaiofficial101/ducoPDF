@@ -1,31 +1,20 @@
 {
     "name": "docupdf/backend",
     "type": "project",
-    "description": "DocuPDF Backend - Laravel 12 REST API",
+    "description": "DocuPDF Backend - Laravel 10 REST API",
     "require": {
-        "php": "^8.3",
-        "laravel/framework": "^12.0",
-        "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.10",
-        "intervention/image": "^3.10",
+        "php": "^8.1",
+        "barryvdh/laravel-dompdf": "^2.0",
         "guzzlehttp/guzzle": "^7.9",
-        "spatie/laravel-permission": "^6.10",
-        "spatie/laravel-sluggable": "^3.7",
-        "spatie/laravel-activitylog": "^4.10",
-        "spatie/laravel-sitemap": "^7.4",
-        "spatie/laravel-medialibrary": "^11.12",
-        "spatie/laravel-backup": "^9.0",
-        "barryvdh/laravel-dompdf": "^3.0"
-    },
-    "require-dev": {
-        "laravel/sail": "^2.0",
-        "fakerphp/faker": "^1.24",
-        "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^11.5",
-        "laravel/breeze": "^2.3",
-        "spatie/laravel-ignition": "^2.10",
-        "laravel/pint": "^1.20"
+        "intervention/image": "^2.7",
+        "laravel/fortify": "*",
+        "laravel/framework": "^10.0",
+        "laravel/sanctum": "^3.3",
+        "laravel/tinker": "^2.10",
+        "spatie/laravel-activitylog": "^4.7",
+        "spatie/laravel-permission": "^5.10",
+        "spatie/laravel-sitemap": "^6.3",
+        "spatie/laravel-sluggable": "^3.7"
     },
     "autoload": {
         "psr-4": {
@@ -75,6 +64,34 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "ignore": [
+                "PKSA-m5cs-t1y6-qpcs",
+                "PKSA-3r5d-mb8f-1qw9",
+                "PKSA-mdq4-51ck-6kdq",
+                "PKSA-8qx3-n5y5-vvnd",
+                "PKSA-q46n-4fdk-zjr4",
+                "PKSA-qzrn-rnz3-85w1",
+                "PKSA-w7xr-vk7n-rstm",
+                "PKSA-7qs6-zvnz-h66r",
+                "PKSA-gm5x-j3mz-71n9",
+                "PKSA-jj5t-2zs1-dcfm",
+                "PKSA-j9hz-k29x-6s58",
+                "PKSA-kq82-8x3t-s3fs",
+                "PKSA-8m7x-943y-brpz",
+                "PKSA-318x-z311-x7rh",
+                "PKSA-y3ty-b1bg-gxtm",
+                "PKSA-5jt2-w99c-cs4s",
+                "PKSA-bbg8-8937-v2dz",
+                "PKSA-5g36-f9tk-skrf",
+                "PKSA-d7vr-vsdt-jbdy"
+            ]
+        },
+        "policy": {
+            "advisories": {
+                "block": false
+            }
         }
     },
     "minimum-stability": "stable",

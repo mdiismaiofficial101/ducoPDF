@@ -16,10 +16,9 @@ class VideoController extends Controller
     protected AuditService $auditService;
     protected ImageService $imageService;
 
-    public function __construct(AuditService $auditService, ImageService $imageService)
+    public function __construct(AuditService $auditService)
     {
         $this->auditService = $auditService;
-        $this->imageService = $imageService;
     }
 
     public function index(Request $request): JsonResponse

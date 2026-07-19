@@ -5,18 +5,21 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
 
 class ImageService
 {
-    private ImageManager $image;
+    private ?ImageManager $image;
     private array $thumbSizes;
     private int $quality;
     private int $webpQuality;
 
     public function __construct()
     {
-        $this->image = new ImageManager(new Driver());
+        if (extension_loaded('gd')) {
+            $this->image = new ImageManager(['driver' => 'gd']);
+        } else {
+            $this->image = null;
+        }
         $this->thumbSizes = config('image.templates', [
             'small' => [120, 120],
             'medium' => [400, 300],
@@ -28,6 +31,9 @@ class ImageService
 
     public function upload(UploadedFile $file, string $path = 'uploads/blog', array $options = []): array
     {
+        if (!$this->image) {
+            throw new \RuntimeException('Image processing requires GD extension');
+        }
         $generateWebp = $options['webp'] ?? true;
         $generateThumbnail = $options['thumbnail'] ?? true;
         $resize = $options['resize'] ?? true;
@@ -42,16 +48,19 @@ class ImageService
         $fullPath = rtrim($path, '/');
         $this->ensureDirectoryExists($fullPath);
 
-        $image = $this->image->read($file->getRealPath());
+        $image = $this->image->make($file->getRealPath());
         $originalWidth = $image->width();
         $originalHeight = $image->height();
 
         if ($resize && ($originalWidth > $maxWidth || $originalHeight > $maxHeight)) {
-            $image->scaleDown($maxWidth, $maxHeight);
+            $image->resize($maxWidth, $maxHeight, function ($constraint) {
+                $constraint->aspectRatio();
+                $constraint->upsize();
+            });
         }
 
         $imagePath = "{$fullPath}/{$filename}.{$extension}";
-        $image->save(public_path($imagePath), quality: $this->quality);
+        $image->save(public_path($imagePath), $this->quality);
 
         $result = [
             'filename' => "{$filename}.{$extension}",
@@ -66,11 +75,14 @@ class ImageService
 
         if ($generateWebp && in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif'])) {
             $webpPath = "{$fullPath}/{$filename}.webp";
-            $webpImage = $this->image->read($file->getRealPath());
+            $webpImage = $this->image->make($file->getRealPath());
             if ($resize && ($originalWidth > $maxWidth || $originalHeight > $maxHeight)) {
-                $webpImage->scaleDown($maxWidth, $maxHeight);
+                $webpImage->resize($maxWidth, $maxHeight, function ($constraint) {
+                    $constraint->aspectRatio();
+                    $constraint->upsize();
+                });
             }
-            $webpImage->toWebp($this->webpQuality)->save(public_path($webpPath));
+            $webpImage->encode('webp', $this->webpQuality)->save(public_path($webpPath));
             $result['webp_url'] = asset($webpFilename = "{$fullPath}/{$filename}.webp");
             $result['webp_filename'] = "{$filename}.webp";
         }
@@ -78,9 +90,9 @@ class ImageService
         if ($generateThumbnail) {
             $thumbFilename = "{$filename}_thumb.{$extension}";
             $thumbPath = "{$fullPath}/{$thumbFilename}";
-            $thumbImage = $this->image->read($file->getRealPath());
-            $thumbImage->cover($this->thumbSizes['medium'][0], $this->thumbSizes['medium'][1]);
-            $thumbImage->save(public_path($thumbPath), quality: $this->quality);
+            $thumbImage = $this->image->make($file->getRealPath());
+            $thumbImage->fit($this->thumbSizes['medium'][0], $this->thumbSizes['medium'][1]);
+            $thumbImage->save(public_path($thumbPath), $this->quality);
             $result['thumbnail_url'] = asset($thumbPath);
             $result['thumbnail_filename'] = $thumbFilename;
         }
@@ -110,19 +122,25 @@ class ImageService
 
     public function optimize(UploadedFile $file, int $quality = 80): string
     {
-        $image = $this->image->read($file->getRealPath());
+        if (!$this->image) {
+            throw new \RuntimeException('Image processing requires GD extension');
+        }
+        $image = $this->image->make($file->getRealPath());
         $path = $file->getPathname();
-        $image->save($path, quality: $quality);
+        $image->save($path, $quality);
         return $path;
     }
 
     public function createThumbnail(string $path, int $width = 400, int $height = 300): string
     {
-        $image = $this->image->read(public_path($path));
+        if (!$this->image) {
+            throw new \RuntimeException('Image processing requires GD extension');
+        }
+        $image = $this->image->make(public_path($path));
         $info = pathinfo($path);
         $thumbPath = "{$info['dirname']}/{$info['filename']}_thumb.{$info['extension']}";
-        $image->cover($width, $height);
-        $image->save(public_path($thumbPath), quality: $this->quality);
+        $image->fit($width, $height);
+        $image->save(public_path($thumbPath), $this->quality);
         return $thumbPath;
     }
 
@@ -149,7 +167,10 @@ class ImageService
         if (!file_exists($fullPath)) {
             return [0, 0];
         }
-        $image = $this->image->read($fullPath);
+        if (!$this->image) {
+            return [0, 0];
+        }
+        $image = $this->image->make($fullPath);
         return [$image->width(), $image->height()];
     }
 
