@@ -48,15 +48,40 @@ export default function BlogPostPage() {
   }
 
   const readingTime = calculateReadingTime(blog.content);
-  const siteUrl = 'https://docupdf.com';
+  const siteUrl = 'https://cybronetwork.online';
 
   const handleShare = () => {
+    const shareUrl = `${siteUrl}/blog/${blog.slug}`;
     if (navigator.share) {
-      navigator.share({ title: blog.title, url: `${siteUrl}/blog/${blog.slug}` });
+      navigator.share({ title: blog.title, url: shareUrl }).catch(() => {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {
+          const input = document.createElement('input');
+          input.value = shareUrl;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      });
     } else {
-      navigator.clipboard.writeText(`${siteUrl}/blog/${blog.slug}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        const input = document.createElement('input');
+        input.value = shareUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
     }
   };
 
