@@ -106,6 +106,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           crossOrigin="anonymous"
         />
         <meta name="google-site-verification" content="85-vPsDOw1lvdTydtPzX5XGO_gUkGe1ZIhHVlNfjmZk" />
+        <meta name="monetag" content="5b65f6efa68f9dfe4e8ddc1581181676" />
       </head>
       <body className="font-sans min-h-screen flex flex-col bg-slate-50 text-slate-900" suppressHydrationWarning>
         <JsonLd data={generateOrganizationSchema()} />
