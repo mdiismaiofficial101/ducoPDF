@@ -156,7 +156,7 @@ export default function Home() {
 
       {/* Tools Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-16 lg:pt-6 lg:pb-24">
-        
+         
         {/* Category Filter Bar */}
         <div className="flex flex-wrap justify-center gap-3 mb-10">
           {categories.map((cat) => (

@@ -100,11 +100,6 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           .icn-hp:hover svg{animation:icn-pulse .5s ease-in-out}
           .icn-hw:hover svg{animation:icn-wiggle .4s ease-in-out}
         `}</style>
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7049109792578274"
-          crossOrigin="anonymous"
-        />
         <meta name="google-site-verification" content="85-vPsDOw1lvdTydtPzX5XGO_gUkGe1ZIhHVlNfjmZk" />
         <meta name="monetag" content="5b65f6efa68f9dfe4e8ddc1581181676" />
       </head>
@@ -158,6 +153,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           {children}
         </main>
 
+        <Script id="monetag-banner" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: "(function(s){s.dataset.zone='11353535',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))" }} />
         <Script id="monetag-inpage" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: "(function(s){s.dataset.zone='11353390',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))" }} />
         <Script id="monetag-inpage-push" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: "(function(s){s.dataset.zone='11353370',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))" }} />
 

@@ -75,18 +75,18 @@ export default function BlogPostPage() {
         { label: blog.title },
       ]} />
 
-      <article>
-        <header className="mb-8">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 mb-4">
-            <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold text-xs">{blog.category}</span>
-            <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(blog.publishDate)}</span>
-            <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {readingTime} min read</span>
-            <span className="flex items-center gap-1.5"><User className="w-4 h-4" /> {blog.author}</span>
-          </div>
+        <article>
+          <header className="mb-8">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 mb-4">
+              <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold text-xs">{blog.category}</span>
+              <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(blog.publishDate)}</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {readingTime} min read</span>
+              <span className="flex items-center gap-1.5"><User className="w-4 h-4" /> {blog.author}</span>
+            </div>
 
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 leading-tight mb-4">{blog.title}</h1>
-          <p className="text-lg text-slate-600 leading-relaxed">{blog.shortDescription}</p>
-        </header>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 leading-tight mb-4">{blog.title}</h1>
+            <p className="text-lg text-slate-600 leading-relaxed">{blog.shortDescription}</p>
+          </header>
 
         {blog.featuredImage && (
           <div className="relative aspect-[1200/630] rounded-2xl overflow-hidden mb-8 bg-slate-100">

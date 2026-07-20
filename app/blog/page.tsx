@@ -56,7 +56,7 @@ export default function BlogListPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filtered.map(blog => (
+          {filtered.map((blog, i) => (
             <article key={blog.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-indigo-200 transition-all duration-300 group flex flex-col">
               <Link href={`/blog/${blog.slug}`} className="block relative aspect-[1200/630] overflow-hidden bg-slate-100">
                 {blog.featuredImage ? (
