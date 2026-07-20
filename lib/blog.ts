@@ -24,12 +24,35 @@ export interface BlogPost {
 
 const STORAGE_KEY = 'docupdf_blogs';
 
+let seeded = false;
+
 export function getBlogs(): BlogPost[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    if (!seeded) {
+      seeded = true;
+      seedBlogs();
+      const seededData = localStorage.getItem(STORAGE_KEY);
+      return seededData ? JSON.parse(seededData) : [];
+    }
+    return [];
   } catch {
     return [];
+  }
+}
+
+async function seedBlogs() {
+  try {
+    const { blogSeedData } = await import('./blog-seed-data');
+    if (blogSeedData && blogSeedData.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(blogSeedData));
+    }
+  } catch (e) {
+    console.error('Failed to seed blog data:', e);
   }
 }
 
@@ -174,9 +197,9 @@ export function getBlogBreadcrumbSchema(slug: string, title: string) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://docupdf.com' },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://docupdf.com/blog' },
-      { '@type': 'ListItem', position: 3, name: title, item: `https://docupdf.com/blog/${slug}` },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://cybronetwork.online' },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://cybronetwork.online/blog' },
+      { '@type': 'ListItem', position: 3, name: title, item: `https://cybronetwork.online/blog/${slug}` },
     ],
   };
 }
@@ -241,7 +264,7 @@ export function calculateSEOScore(blog: Partial<BlogPost>): SEOScore {
 
 export function getBlogsForSitemap() {
   return getPublishedBlogs().map(b => ({
-    url: `https://docupdf.com/blog/${b.slug}`,
+    url: `https://cybronetwork.online/blog/${b.slug}`,
     lastModified: new Date(b.updatedAt || b.publishDate),
     changeFrequency: 'monthly' as const,
     priority: 0.8,
