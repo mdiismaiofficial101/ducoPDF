@@ -154,6 +154,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
         </main>
 
         <Script id="monetag-banner" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: "(function(s){s.dataset.zone='11353535',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))" }} />
+        <Script id="monetag-push" src="https://5gvci.com/act/files/tag.min.js?z=11353636" strategy="afterInteractive" data-cfasync="false" async />
         <Script id="monetag-inpage" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: "(function(s){s.dataset.zone='11353390',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))" }} />
         <Script id="monetag-inpage-push" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: "(function(s){s.dataset.zone='11353370',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))" }} />
 
