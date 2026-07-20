@@ -1,55 +1,34 @@
 import { NextResponse } from 'next/server';
 
 const SITE_URL = 'https://cybronetwork.online';
-const API_BASE = 'https://server.cybronetwork.online/api/v1';
+const BLOG_API_URL = 'https://img.cybronetwork.online/blogs-api.php';
 
 async function fetchDynamicUrls() {
   const urls: Array<{ url: string; lastModified: string; changeFrequency: string; priority: number }> = [];
 
   try {
-    const [categoriesRes, tagsRes, blogRes] = await Promise.allSettled([
-      fetch(`${API_BASE}/categories`, { next: { revalidate: 3600 } }),
-      fetch(`${API_BASE}/tags`, { next: { revalidate: 3600 } }),
-      fetch(`${API_BASE}/blog/posts?limit=100`, { next: { revalidate: 1800 } }),
-    ]);
-
-    if (categoriesRes.status === 'fulfilled' && categoriesRes.value.ok) {
-      const data = await categoriesRes.value.json();
-      if (data.categories?.length) {
-        data.categories.forEach((cat: { slug: string }) => {
+    const blogRes = await fetch(`${BLOG_API_URL}?published=1`, { cache: 'no-store' });
+    if (blogRes.ok) {
+      const data = await blogRes.json();
+      if (Array.isArray(data.blogs)) {
+        const cats = new Set<string>();
+        data.blogs.forEach((post: { slug: string; updatedAt?: string; createdAt?: string; category?: string }) => {
+          if (post.slug) {
+            urls.push({
+              url: `${SITE_URL}/blog/${post.slug}`,
+              lastModified: post.updatedAt || post.createdAt || new Date().toISOString(),
+              changeFrequency: 'monthly',
+              priority: 0.8,
+            });
+          }
+          if (post.category) cats.add(post.category);
+        });
+        cats.forEach((cat) => {
           urls.push({
-            url: `${SITE_URL}/category/${cat.slug}`,
+            url: `${SITE_URL}/blog/category/${encodeURIComponent(cat)}`,
             lastModified: new Date().toISOString(),
             changeFrequency: 'weekly',
             priority: 0.7,
-          });
-        });
-      }
-    }
-
-    if (tagsRes.status === 'fulfilled' && tagsRes.value.ok) {
-      const data = await tagsRes.value.json();
-      if (data.tags?.length) {
-        data.tags.forEach((tag: { slug: string }) => {
-          urls.push({
-            url: `${SITE_URL}/tag/${tag.slug}`,
-            lastModified: new Date().toISOString(),
-            changeFrequency: 'weekly',
-            priority: 0.6,
-          });
-        });
-      }
-    }
-
-    if (blogRes.status === 'fulfilled' && blogRes.value.ok) {
-      const data = await blogRes.value.json();
-      if (data.posts?.length) {
-        data.posts.forEach((post: { slug: string; updatedAt?: string; createdAt?: string }) => {
-          urls.push({
-            url: `${SITE_URL}/blog/${post.slug}`,
-            lastModified: post.updatedAt || post.createdAt || new Date().toISOString(),
-            changeFrequency: 'monthly',
-            priority: 0.8,
           });
         });
       }

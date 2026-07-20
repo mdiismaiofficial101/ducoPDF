@@ -146,7 +146,7 @@ tr:hover td{background:#f8fafc}
     <button class="tab" data-tab="reports" onclick="switchTab('reports');renderReports()"><i data-lucide="flag" class="lu"></i> Reports</button>
     <button class="tab" data-tab="backup" onclick="switchTab('backup')"><i data-lucide="save" class="lu"></i> Backup</button>
     <button class="tab" data-tab="notifications" onclick="switchTab('notifications');renderNotifs()"><i data-lucide="mail" class="lu"></i> Notifications</button>
-    <button class="tab" data-tab="blog" onclick="switchTab('blog');renderBlogs()"><i data-lucide="file-edit" class="lu"></i> Blog</button>
+    <button class="tab" data-tab="blog" onclick="switchTab('blog');loadBlogsFromServer().then(renderBlogs)"><i data-lucide="file-edit" class="lu"></i> Blog</button>
     <button class="tab" data-tab="audit" onclick="switchTab('audit');renderAuditLog()"><i data-lucide="clipboard-list" class="lu"></i> Audit</button>
     <button class="tab" data-tab="settings" onclick="switchTab('settings')"><i data-lucide="settings" class="lu"></i> Settings</button>
   </div>
@@ -224,7 +224,7 @@ tr:hover td{background:#f8fafc}
     <div class="header" style="margin-bottom:16px">
       <div><h1 style="font-size:22px"><i data-lucide="save" class="lu"></i> Backup & Export</h1><p style="font-size:13px">Download all site data as JSON files.</p></div>
     </div>
-    <div class="alert-banner"><strong><i data-lucide="alert-triangle" class="lu"></i> Note:</strong> All data is stored in browser localStorage. Download backups regularly to avoid data loss.</div>
+    <div class="alert-banner"><strong><i data-lucide="alert-triangle" class="lu"></i> Note:</strong> Blog posts are stored on the server (img.cybronetwork.online) and visible to Google & all visitors. Templates, users & analytics stay in this browser.</div>
     <div class="backup-card">
       <div><h3><i data-lucide="file-text" class="lu"></i> Templates</h3><p>All PDF templates — <span id="backupTplCount">0</span> items</p></div>
       <button class="btn-sm" onclick="backupTemplates()">Download JSON</button>
@@ -592,11 +592,17 @@ const BAZAARLINK_MODEL_KEY='docupdf_bazaarlink_model';
 const BLOG_CATS=['PDF Tips','Convert PDF','Compress PDF','PDF Security','PDF Editing','Document Management','Productivity','Tutorial'];
 const ALL_TOOLS=['Merge PDF','Split PDF','Compress PDF','Rotate PDF','PDF to Word','Word to PDF','JPG to PDF','PDF to JPG','Protect PDF','Unlock PDF','Watermark PDF','OCR PDF','Organize PDF','Crop PDF','AI Summarizer','Delete Pages','eSignature','Compare PDF','Repair PDF','Redact PDF'];
 
-function getBlogs(){try{return JSON.parse(localStorage.getItem(BLOG_KEY)||'[]')}catch{return[]}}
-function saveBlogs(b){localStorage.setItem(BLOG_KEY,JSON.stringify(b));window.dispatchEvent(new Event('blog-updated'))}
+let _blogCache=[];
+function getBlogs(){return _blogCache||[]}
+async function loadBlogsFromServer(){try{const r=await fetch('/api/blogs');const d=await r.json();if(d&&Array.isArray(d.blogs)){_blogCache=d.blogs;return _blogCache}}catch(e){}_blogCache=[];return _blogCache}
+async function saveBlogsServer(blogs){
+  // sync whole array: we send each as POST (upsert). Simpler: send the full list.
+  for(const b of blogs){try{await fetch('/api/blogs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}catch(e){}}
+  _blogCache=blogs;window.dispatchEvent(new Event('blog-updated'));
+}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).substring(2,9)}
 function genSlug(t){return t.toLowerCase().replace(/[^\w\s-]/g,'').replace(/[\s_]+/g,'-').replace(/^-+|-+$/g,'').substring(0,80)}
-function uniqueSlug(t){let s=genSlug(t),c=1;const bl=getBlogs();while(bl.some(b=>b.slug===s)){s=genSlug(t)+'-'+c;c++}return s}
+function uniqueSlug(t){let s=genSlug(t),c=1;const bl=_blogCache;while(bl.some(b=>b.slug===s)){s=genSlug(t)+'-'+c;c++}return s}
 function calcReadingTime(c){const t=c.replace(/<[^>]*>/g,'');return Math.max(1,Math.ceil(t.split(/\s+/).filter(Boolean).length/200))}
 function fmtDate(d){return new Date(d).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}
 
@@ -649,7 +655,7 @@ async function callGemini(prompt){
 }
 
 function renderBlogs(){
-  const list=getBlogs();const q=(document.getElementById('blogSearch').value||'').toLowerCase();
+  const list=_blogCache;const q=(document.getElementById('blogSearch').value||'').toLowerCase();
   const f=document.getElementById('blogStatusFilter').value;
   const filtered=list.filter(b=>{
     if(f==='published'&&!b.published)return false;
@@ -666,8 +672,8 @@ function renderBlogs(){
   renderLucideIcons();
 }
 
-function previewBlog(id){const b=getBlogs().find(x=>x.id===id);if(b)window.open('/blog/'+b.slug,'_blank')}
-function delBlog(id,title){if(!confirm('Delete "'+title+'"?'))return;saveBlogs(getBlogs().filter(b=>b.id!==id));renderBlogs()}
+function previewBlog(id){const b=_blogCache.find(x=>x.id===id);if(b)window.open('/blog/'+b.slug,'_blank')}
+async function delBlog(id,title){if(!confirm('Delete "'+title+'"?'))return;try{await fetch('/api/blogs?id='+encodeURIComponent(id),{method:'DELETE'})}catch(e){}_blogCache=_blogCache.filter(b=>b.id!==id);renderBlogs()}
 
 function openBlogForm(existing){
   const b=existing||{id:'',title:'',slug:'',category:'',featuredImage:'',imageAlt:'',shortDescription:'',content:'',metaTitle:'',metaDescription:'',focusKeyword:'',tags:[],canonicalUrl:'',publishDate:new Date().toISOString().split('T')[0],author:'Admin',faq:[],relatedTools:[],relatedBlogs:[],published:false,createdAt:'',updatedAt:''};
@@ -707,19 +713,27 @@ function renderSEOScore(data){
   renderLucideIcons();
 }
 
-function saveBlogForm(id){
+async function saveBlogForm(id){
   const d=getBlogFormData();
   if(!d.title){alert('Title is required');return}
   if(!d.shortDescription){alert('Short description is required');return}
-  const blogs=getBlogs();
+  const blogs=_blogCache.slice();
+  let saved;
   if(id){
     const idx=blogs.findIndex(b=>b.id===id);
-    if(idx>=0){blogs[idx]={...blogs[idx],...d,updatedAt:new Date().toISOString()};auditLog('BLOG_EDIT','Edited blog: '+d.title)}
+    saved={...blogs[idx],...d,updatedAt:new Date().toISOString()};
+    if(idx>=0){blogs[idx]=saved}else{blogs.push(saved)}
+    auditLog('BLOG_EDIT','Edited blog: '+d.title);
   }else{
-    blogs.push({id:genId(),slug:uniqueSlug(d.title),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),faq:[],relatedTools:[],relatedBlogs:[],...d});
-    auditLog('BLOG_CREATE','Created blog: '+d.title)
+    saved={id:genId(),slug:uniqueSlug(d.title),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),faq:[],relatedTools:[],relatedBlogs:[],...d};
+    blogs.push(saved);
+    auditLog('BLOG_CREATE','Created blog: '+d.title);
   }
-  saveBlogs(blogs);closeBlogForm();renderBlogs();switchTab('blog');
+  try{
+    await fetch('/api/blogs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(saved)});
+    _blogCache=blogs;
+  }catch(e){alert('Save failed: '+e.message)}
+  closeBlogForm();renderBlogs();switchTab('blog');
 }
 
 async function aiAudit(){
@@ -877,7 +891,7 @@ function uploadBlogImage(input){
 }
 
 function editBlog(id){
-  const b=getBlogs().find(x=>x.id===id);
+  const b=_blogCache.find(x=>x.id===id);
   if(b)openBlogForm(b);
 }
 
@@ -917,6 +931,7 @@ function initSettings(){
 
 document.addEventListener('DOMContentLoaded',function(){
   renderLucideIcons();
+  loadBlogsFromServer().then(function(){if(document.getElementById('blogBody'))renderBlogs()});
 });
 
 document.getElementById('passInput').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});

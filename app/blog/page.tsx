@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getPublishedBlogs, BlogPost, formatDate, calculateReadingTime, BLOG_CATEGORIES } from '@/lib/blog';
+import { BlogPost, formatDate, calculateReadingTime, BLOG_CATEGORIES } from '@/lib/blog';
 import { Calendar, Clock, ArrowRight, Search } from 'lucide-react';
 
 export default function BlogListPage() {
@@ -12,10 +12,10 @@ export default function BlogListPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const load = () => setBlogs(getPublishedBlogs());
-    load();
-    window.addEventListener('blog-updated', load);
-    return () => window.removeEventListener('blog-updated', load);
+    fetch('/api/blogs?published=1')
+      .then(r => r.json())
+      .then(d => setBlogs(Array.isArray(d.blogs) ? d.blogs : []))
+      .catch(() => setBlogs([]));
   }, []);
 
   const filtered = blogs.filter(b => {

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getBlogBySlug, getPublishedBlogs, BlogPost, formatDate, calculateReadingTime, ALL_TOOLS, getBlogSchema, getBlogBreadcrumbSchema, getBlogFAQSchema } from '@/lib/blog';
+import { getPublishedBlogs, BlogPost, formatDate, calculateReadingTime, ALL_TOOLS, getBlogSchema, getBlogBreadcrumbSchema, getBlogFAQSchema } from '@/lib/blog';
 import JsonLd from '@/components/JsonLd';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { Calendar, Clock, User, Tag, ArrowLeft, ArrowRight, Share2, Check } from 'lucide-react';
@@ -21,14 +21,20 @@ export default function BlogPostPage() {
 
   useEffect(() => {
     if (!slug) return;
-    const post = getBlogBySlug(slug);
-    setBlog(post || null);
-    if (post) {
-      const all = getPublishedBlogs().filter(b => b.id !== post.id);
-      const relatedByTool = all.filter(b => b.relatedTools?.some(t => post.relatedTools?.includes(t)));
-      const relatedByCat = all.filter(b => b.category === post.category && !relatedByTool.includes(b));
-      setRelated([...relatedByTool, ...relatedByCat].slice(0, 3));
-    }
+    fetch('/api/blogs')
+      .then(r => r.json())
+      .then(d => {
+        const all: BlogPost[] = Array.isArray(d.blogs) ? d.blogs : [];
+        const post = all.find(b => b.slug === slug);
+        setBlog(post || null);
+        if (post) {
+          const others = all.filter(b => b.id !== post.id);
+          const relatedByTool = others.filter(b => b.relatedTools?.some(t => post.relatedTools?.includes(t)));
+          const relatedByCat = others.filter(b => b.category === post.category && !relatedByTool.includes(b));
+          setRelated([...relatedByTool, ...relatedByCat].slice(0, 3));
+        }
+      })
+      .catch(() => setBlog(null));
   }, [slug]);
 
   if (!blog) {
