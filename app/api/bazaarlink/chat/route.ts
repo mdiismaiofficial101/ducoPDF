@@ -107,6 +107,30 @@ Return ONLY this JSON:
       return NextResponse.json({ result });
     }
 
+    if (action === 'image-prompt') {
+      const systemPrompt = "You are an expert at writing text-to-image prompts. Respond with valid JSON only, no markdown.";
+      const userPrompt = `Write a detailed, high-quality text-to-image prompt (for Midjourney/Stable Diffusion/DALL-E) for a blog featured image. Make it visually specific, professional, and SEO-friendly.
+Return ONLY this JSON:
+{
+  "prompt": "<detailed image prompt, 2-4 sentences, visually specific>",
+  "negativePrompt": "<what to avoid, comma separated>"
+}
+Topic title: "${title}"
+Focus keyword: "${keyword || ''}"`;
+
+      const raw = await callBazaarLink(systemPrompt, userPrompt, { model: validModel, temperature: 0.6, responseFormat: 'json', maxTokens: 800 });
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(raw.replace(/```json?/g, '').replace(/```/g, '').trim());
+      } catch {
+        const m = raw.match(/\{[\s\S]*\}/);
+        if (m) parsed = JSON.parse(m[0]);
+      }
+      const promptText = parsed?.prompt || '';
+      const negText = parsed?.negativePrompt || '';
+      return NextResponse.json({ prompt: promptText, negativePrompt: negText });
+    }
+
     return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
   } catch (error: any) {
     console.error("BazaarLink API error:", error);
