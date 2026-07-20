@@ -53,36 +53,22 @@ export default function BlogPostPage() {
   const handleShare = () => {
     const shareUrl = `${siteUrl}/blog/${blog.slug}`;
     if (navigator.share) {
-      navigator.share({ title: blog.title, url: shareUrl }).catch(() => {
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        }).catch(() => {
-          const input = document.createElement('input');
-          input.value = shareUrl;
-          document.body.appendChild(input);
-          input.select();
-          document.execCommand('copy');
-          document.body.removeChild(input);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        });
-      });
-    } else {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }).catch(() => {
-        const input = document.createElement('input');
-        input.value = shareUrl;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
+      navigator.share({ title: blog.title, url: shareUrl }).catch(() => {});
     }
+    const textarea = document.createElement('textarea');
+    textarea.value = shareUrl;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      window.prompt('Copy this link:', shareUrl);
+    }
+    document.body.removeChild(textarea);
   };
 
   return (
