@@ -71,6 +71,42 @@ Content: "${String(content || '').substring(0, 3000)}"`;
       return NextResponse.json({ result });
     }
 
+    if (action === 'auto-seo') {
+      const systemPrompt = "You are an expert SEO assistant. Respond with valid JSON only, no markdown.";
+      const userPrompt = `Given a blog post, generate a complete SEO package as JSON. Rules:
+- focusKeyword: 2-4 word primary keyword (lowercase)
+- metaTitle: 50-60 characters, includes focus keyword
+- metaDescription: 120-160 characters, includes focus keyword
+- shortDescription: 50-160 characters summary
+- imageAlt: descriptive alt text using focus keyword
+- canonicalUrl: "https://cybronetwork.online/blog/${String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 80)}"
+- tags: exactly 5 relevant tags
+- relatedTools: pick 3 from [Merge PDF, Split PDF, Compress PDF, Rotate PDF, PDF to Word, Word to PDF, JPG to PDF, PDF to JPG, Protect PDF, Unlock PDF, Watermark PDF, OCR PDF, Organize PDF, Crop PDF, AI Summarizer, Delete Pages, eSignature, Compare PDF, Repair PDF, Redact PDF]
+- faq: array of 4 {question, answer} objects (answers 1-2 sentences)
+- content: if the provided content already has <h1> and at least two <h2> headings and is 500+ words, return it unchanged. Otherwise, rewrite/improve the content by wrapping it with a single <h1> title heading and at least three <h2> section headings, ensuring 500+ words of useful content. Keep it as HTML.
+
+Blog Title: "${title}"
+Focus Keyword (if any): "${keyword || ''}"
+Content: "${String(content || '').substring(0, 4000)}"
+
+Return ONLY this JSON:
+{
+  "focusKeyword": "",
+  "metaTitle": "",
+  "metaDescription": "",
+  "shortDescription": "",
+  "imageAlt": "",
+  "canonicalUrl": "",
+  "tags": [],
+  "relatedTools": [],
+  "faq": [{"question":"","answer":""}],
+  "content": ""
+}`;
+
+      const result = await callBazaarLink(systemPrompt, userPrompt, { model: validModel, temperature: 0.4, responseFormat: 'json', maxTokens: 4096 });
+      return NextResponse.json({ result });
+    }
+
     return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
   } catch (error: any) {
     console.error("BazaarLink API error:", error);

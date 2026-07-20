@@ -672,7 +672,7 @@ function delBlog(id,title){if(!confirm('Delete "'+title+'"?'))return;saveBlogs(g
 function openBlogForm(existing){
   const b=existing||{id:'',title:'',slug:'',category:'',featuredImage:'',imageAlt:'',shortDescription:'',content:'',metaTitle:'',metaDescription:'',focusKeyword:'',tags:[],canonicalUrl:'',publishDate:new Date().toISOString().split('T')[0],author:'Admin',faq:[],relatedTools:[],relatedBlogs:[],published:false,createdAt:'',updatedAt:''};
   const isEdit=!!existing;
-  document.getElementById('blogForm').innerHTML='<div class="modal-head"><h3>'+(isEdit?'Edit Blog Post':'New Blog Post')+'</h3><button onclick="closeBlogForm()"><i data-lucide="x" class="lu"></i></button></div><div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn-sm" onclick="aiAudit()" style="background:#7c3aed"><i data-lucide="sparkles" class="lu"></i> AI SEO Audit</button><button class="btn-sm" onclick="aiFaq()" style="background:#0891b2"><i data-lucide="help-circle" class="lu"></i> Auto FAQ</button><button class="btn-sm" onclick="aiMeta()" style="background:#059669"><i data-lucide="clipboard-list" class="lu"></i> Auto Meta</button></div><div class="grid-2"><input type="text" id="bfTitle" placeholder="Blog Title" value="'+esc(b.title)+'"><input type="text" id="bfKeyword" placeholder="Focus Keyword" value="'+esc(b.focusKeyword||'')+'"></div><div class="grid-2"><select id="bfCategory">'+BLOG_CATS.map(c=>'<option value="'+c+'"'+(c===b.category?' selected':'')+'>'+c+'</option>').join('')+'</select><input type="date" id="bfDate" value="'+b.publishDate+'"></div><input type="text" id="bfImage" placeholder="Featured Image URL" value="'+esc(b.featuredImage||'')+'"><input type="text" id="bfImageAlt" placeholder="Image Alt Text" value="'+esc(b.imageAlt||'')+'"><textarea id="bfShortDesc" placeholder="Short Description (50+ chars)" style="height:60px">'+esc(b.shortDescription||'')+'</textarea><textarea id="bfContent" placeholder="Content (HTML)">'+esc(b.content||'')+'</textarea><div class="grid-2"><input type="text" id="bfMetaTitle" placeholder="Meta Title" value="'+esc(b.metaTitle||'')+'"><input type="text" id="bfMetaDesc" placeholder="Meta Description" value="'+esc(b.metaDescription||'')+'"></div><input type="text" id="bfCanonical" placeholder="Canonical URL" value="'+esc(b.canonicalUrl||'')+'"><input type="text" id="bfTags" placeholder="Tags (comma separated)" value="'+esc((b.tags||[]).join(', '))+'"><input type="text" id="bfAuthor" placeholder="Author" value="'+esc(b.author||'Admin')+'"><div style="margin:12px 0"><label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px"><input type="checkbox" id="bfPublished" '+(b.published?'checked':'')+'> Published</label></div><div id="blogSEOReport" style="margin:12px 0;padding:12px;background:#f8fafc;border-radius:10px;font-size:12px;display:none"></div><button class="btn-save" onclick="saveBlogForm(\''+b.id+'\')"><i data-lucide="save" class="lu"></i> '+(isEdit?'Update':'Create')+' Blog Post</button>';document.getElementById('blogForm').style.display='block';renderLucideIcons();
+  document.getElementById('blogForm').innerHTML='<div class="modal-head"><h3>'+(isEdit?'Edit Blog Post':'New Blog Post')+'</h3><button onclick="closeBlogForm()"><i data-lucide="x" class="lu"></i></button></div><div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn-sm" onclick="autoSeo()" style="background:linear-gradient(90deg,#7c3aed,#0891b2)"><i data-lucide="wand-2" class="lu"></i> Auto AI SEO (100%)</button><button class="btn-sm" onclick="aiAudit()" style="background:#7c3aed"><i data-lucide="sparkles" class="lu"></i> AI SEO Audit</button><button class="btn-sm" onclick="aiFaq()" style="background:#0891b2"><i data-lucide="help-circle" class="lu"></i> Auto FAQ</button><button class="btn-sm" onclick="aiMeta()" style="background:#059669"><i data-lucide="clipboard-list" class="lu"></i> Auto Meta</button></div><div class="grid-2"><input type="text" id="bfTitle" placeholder="Blog Title" value="'+esc(b.title)+'"><input type="text" id="bfKeyword" placeholder="Focus Keyword" value="'+esc(b.focusKeyword||'')+'"></div><div class="grid-2"><select id="bfCategory">'+BLOG_CATS.map(c=>'<option value="'+c+'"'+(c===b.category?' selected':'')+'>'+c+'</option>').join('')+'</select><input type="date" id="bfDate" value="'+b.publishDate+'"></div><input type="text" id="bfImage" placeholder="Featured Image URL" value="'+esc(b.featuredImage||'')+'"><input type="text" id="bfImageAlt" placeholder="Image Alt Text" value="'+esc(b.imageAlt||'')+'"><textarea id="bfShortDesc" placeholder="Short Description (50+ chars)" style="height:60px">'+esc(b.shortDescription||'')+'</textarea><textarea id="bfContent" placeholder="Content (HTML)">'+esc(b.content||'')+'</textarea><div class="grid-2"><input type="text" id="bfMetaTitle" placeholder="Meta Title" value="'+esc(b.metaTitle||'')+'"><input type="text" id="bfMetaDesc" placeholder="Meta Description" value="'+esc(b.metaDescription||'')+'"></div><input type="text" id="bfCanonical" placeholder="Canonical URL" value="'+esc(b.canonicalUrl||'')+'"><input type="text" id="bfTags" placeholder="Tags (comma separated)" value="'+esc((b.tags||[]).join(', '))+'"><input type="text" id="bfAuthor" placeholder="Author" value="'+esc(b.author||'Admin')+'"><div style="margin:12px 0"><label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px"><input type="checkbox" id="bfPublished" '+(b.published?'checked':'')+'> Published</label></div><div id="blogSEOReport" style="margin:12px 0;padding:12px;background:#f8fafc;border-radius:10px;font-size:12px;display:none"></div><input type="hidden" id="bfFaq" value="'+esc(JSON.stringify(b.faq||[]))+'"><input type="hidden" id="bfRelatedTools" value="'+esc(JSON.stringify(b.relatedTools||[]))+'"><button class="btn-save" onclick="saveBlogForm(\''+b.id+'\')"><i data-lucide="save" class="lu"></i> '+(isEdit?'Update':'Create')+' Blog Post</button>';document.getElementById('blogForm').style.display='block';renderLucideIcons();
   if(isEdit)renderSEOScore(b);
 }
 
@@ -694,6 +694,8 @@ function getBlogFormData(){
     author:document.getElementById('bfAuthor').value.trim()||'Admin',
     publishDate:document.getElementById('bfDate').value,
     published:document.getElementById('bfPublished').checked,
+    faq:(function(){try{return JSON.parse(document.getElementById('bfFaq').value||'[]')}catch{return[]}})(),
+    relatedTools:(function(){try{return JSON.parse(document.getElementById('bfRelatedTools').value||'[]')}catch{return[]}})(),
   };
 }
 
@@ -760,6 +762,42 @@ async function aiMeta(){
     document.getElementById('bfCanonical').value='https://cybronetwork.online/blog/'+genSlug(d.title);
     el.innerHTML='<div style="font-weight:700;font-size:16px;color:#059669"><i data-lucide="check-circle" class="lu"></i> Auto Meta Generated</div><div style="margin-top:4px"><b>Title:</b> '+(json.metaTitle||'')+' ('+((json.metaTitle||'').length)+' chars)</div><div style="margin-top:4px"><b>Description:</b> '+(json.metaDescription||'')+' ('+((json.metaDescription||'').length)+' chars)</div><div style="margin-top:4px"><b>Keywords:</b> '+(json.keywords||[]).join(', ')+'</div>';
   }catch(e){el.innerHTML='<span style="color:#dc2626">Meta error: '+esc(e.message)+'</span>'}
+  renderLucideIcons();
+}
+
+async function autoSeo(){
+  const d=getBlogFormData();
+  if(!d.title){alert('Enter a blog title first!');return}
+  if(!d.content||d.content.replace(/<[^>]*>/g,'').trim().length<30){alert('Write some content first (at least a few sentences) so AI can optimize it!');return}
+  const el=document.getElementById('blogSEOReport');el.style.display='block';el.innerHTML='<span style="color:#7c3aed"><i data-lucide="loader" class="lu"></i> Running Auto AI SEO... generating full optimization (100% target)...</span>';
+  renderLucideIcons();
+  try{
+    const res=await fetch('/api/bazaarlink/chat',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'auto-seo',title:d.title,keyword:d.focusKeyword,content:d.content,model:getBazaarLinkModel()})
+    });
+    const out=await res.json();
+    if(!res.ok)throw new Error(out.error||'API error');
+    const json=JSON.parse(out.result.replace(/```json?/g,'').replace(/```/g,'').trim());
+    if(json.focusKeyword)document.getElementById('bfKeyword').value=json.focusKeyword;
+    if(json.metaTitle)document.getElementById('bfMetaTitle').value=json.metaTitle;
+    if(json.metaDescription)document.getElementById('bfMetaDesc').value=json.metaDescription;
+    if(json.shortDescription)document.getElementById('bfShortDesc').value=json.shortDescription;
+    if(json.imageAlt)document.getElementById('bfImageAlt').value=json.imageAlt;
+    if(json.canonicalUrl)document.getElementById('bfCanonical').value=json.canonicalUrl;
+    if(json.tags&&json.tags.length)document.getElementById('bfTags').value=json.tags.join(', ');
+    if(json.relatedTools&&json.relatedTools.length)document.getElementById('bfRelatedTools').value=JSON.stringify(json.relatedTools);
+    if(json.faq&&json.faq.length)document.getElementById('bfFaq').value=JSON.stringify(json.faq);
+    if(json.content)document.getElementById('bfContent').value=json.content;
+    let msg='<div style="font-weight:700;font-size:16px;color:#7c3aed"><i data-lucide="wand-2" class="lu"></i> Auto AI SEO Complete</div>';
+    msg+='<div style="margin-top:4px"><b>Focus Keyword:</b> '+(json.focusKeyword||'')+'</div>';
+    msg+='<div style="margin-top:4px"><b>Meta Title:</b> '+(json.metaTitle||'')+' ('+((json.metaTitle||'').length)+' chars)</div>';
+    msg+='<div style="margin-top:4px"><b>Meta Desc:</b> '+(json.metaDescription||'')+' ('+((json.metaDescription||'').length)+' chars)</div>';
+    msg+='<div style="margin-top:4px"><b>FAQ:</b> '+((json.faq||[]).length)+' pairs | <b>Related Tools:</b> '+((json.relatedTools||[]).length)+' | <b>Tags:</b> '+((json.tags||[]).length)+'</div>';
+    msg+='<div style="margin-top:4px;color:#059669">All SEO fields filled. Save the post to lock in 100% SEO score.</div>';
+    el.innerHTML=msg;
+    renderSEOScore(getBlogFormData());
+  }catch(e){el.innerHTML='<span style="color:#dc2626">Auto SEO error: '+esc(e.message)+'</span>'}
   renderLucideIcons();
 }
 
