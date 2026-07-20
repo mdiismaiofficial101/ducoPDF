@@ -619,14 +619,15 @@ function calcSEOScore(b){
 function getGeminiKey(){return localStorage.getItem(GEMINI_KEY)||''}
 
 async function callGemini(prompt){
-  const key=getGeminiKey();if(!key){throw new Error('Gemini API key not set. Go to Settings tab.')}
-  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-  });
-  const d=await res.json();
-  if(!res.ok)throw new Error(d.error?.message||'API error');
-  return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  try{
+    const res=await fetch('/api/gemini/blog',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'chat',prompt:prompt})
+    });
+    const d=await res.json();
+    if(!res.ok)throw new Error(d.error||'API error');
+    return d.result||'';
+  }catch(e){throw new Error('AI service error: '+e.message)}
 }
 
 function renderBlogs(){
@@ -702,7 +703,6 @@ function saveBlogForm(id){
 }
 
 async function aiAudit(){
-  const key=getGeminiKey();if(!key){alert('Set Gemini API key in Settings tab first!');switchTab('settings');return}
   const d=getBlogFormData();if(!d.content){alert('Write some content first!');return}
   const el=document.getElementById('blogSEOReport');el.style.display='block';el.innerHTML='<span style="color:#7c3aed">Running AI SEO Audit...</span>';
   try{
@@ -715,7 +715,6 @@ async function aiAudit(){
 }
 
 async function aiFaq(){
-  const key=getGeminiKey();if(!key){alert('Set Gemini API key in Settings tab first!');switchTab('settings');return}
   const d=getBlogFormData();if(!d.content){alert('Write some content first!');return}
   const el=document.getElementById('blogSEOReport');el.style.display='block';el.innerHTML='<span style="color:#0891b2">Generating FAQ...</span>';
   try{
@@ -731,7 +730,6 @@ async function aiFaq(){
 function applyFaq(jsonStr){try{const faqs=JSON.parse(jsonStr);alert('FAQ applied! ('+faqs.length+' items)')}catch(e){alert('Error applying FAQ')}}
 
 async function aiMeta(){
-  const key=getGeminiKey();if(!key){alert('Set Gemini API key in Settings tab first!');switchTab('settings');return}
   const d=getBlogFormData();if(!d.title){alert('Enter a title first!');return}
   const el=document.getElementById('blogSEOReport');el.style.display='block';el.innerHTML='<span style="color:#059669">Generating meta tags...</span>';
   try{
@@ -741,7 +739,7 @@ async function aiMeta(){
     if(json.metaTitle){document.getElementById('bfMetaTitle').value=json.metaTitle}
     if(json.metaDescription){document.getElementById('bfMetaDesc').value=json.metaDescription}
     if(json.keywords){document.getElementById('bfTags').value=json.keywords.join(', ')}
-    document.getElementById('bfCanonical').value='https://docupdf.com/blog/'+genSlug(d.title);
+    document.getElementById('bfCanonical').value='https://cybronetwork.online/blog/'+genSlug(d.title);
     el.innerHTML='<div style="font-weight:700;font-size:16px;color:#059669"><i data-lucide="check-circle" class="lu"></i> Auto Meta Generated</div><div style="margin-top:4px"><b>Title:</b> '+(json.metaTitle||'')+' ('+((json.metaTitle||'').length)+' chars)</div><div style="margin-top:4px"><b>Description:</b> '+(json.metaDescription||'')+' ('+((json.metaDescription||'').length)+' chars)</div><div style="margin-top:4px"><b>Keywords:</b> '+(json.keywords||[]).join(', ')+'</div>';
   }catch(e){el.innerHTML='<span style="color:#dc2626">Meta error: '+esc(e.message)+'</span>'}
   renderLucideIcons();
@@ -761,17 +759,15 @@ function saveGeminiKey(){
 }
 
 async function testGeminiKey(){
-  const key=document.getElementById('geminiKeyInput').value.trim()||getGeminiKey();
-  if(!key){document.getElementById('geminiStatus').innerHTML='<span style="color:#dc2626">Please enter an API key first.</span>';return}
-  const el=document.getElementById('geminiStatus');el.innerHTML='<span style="color:#7c3aed">Testing connection...</span>';
+  const el=document.getElementById('geminiStatus');el.innerHTML='<span style="color:#7c3aed">Testing AI connection...</span>';
   try{
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{
+    const res=await fetch('/api/gemini/blog',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:'Say "API working!"'}],role:'user'}]})
+      body:JSON.stringify({action:'chat',prompt:'Say exactly: API working!'})
     });
     const d=await res.json();
-    if(res.ok){el.innerHTML='<span style="color:#059669"><i data-lucide="check-circle" class="lu"></i> Connection successful! Gemini API is working.</span>';localStorage.setItem(GEMINI_KEY,key)}
-    else{el.innerHTML='<span style="color:#dc2626"><i data-lucide="x-circle" class="lu"></i> Error: '+esc(d.error?.message||'Unknown')+'</span>'}
+    if(res.ok){el.innerHTML='<span style="color:#059669"><i data-lucide="check-circle" class="lu"></i> Connection successful! AI service is working (OpenRouter).</span>'}
+    else{el.innerHTML='<span style="color:#dc2626"><i data-lucide="x-circle" class="lu"></i> Error: '+esc(d.error||'Unknown')+'</span>'}
   }catch(e){el.innerHTML='<span style="color:#dc2626"><i data-lucide="x-circle" class="lu"></i> Connection failed: '+esc(e.message)+'</span>'}
   renderLucideIcons();
 }
