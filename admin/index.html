@@ -291,14 +291,13 @@ tr:hover td{background:#f8fafc}
 
   <div class="tab-content" id="tab-settings">
     <div class="header" style="margin-bottom:16px">
-      <div><h1 style="font-size:22px"><i data-lucide="settings" class="lu"></i> Settings</h1><p style="font-size:13px">Configure Gemini AI API key for blog features.</p></div>
+      <div><h1 style="font-size:22px"><i data-lucide="settings" class="lu"></i> Settings</h1><p style="font-size:13px">Configure AI provider (BazaarLink) for blog features.</p></div>
     </div>
     <div class="modal">
-      <div class="modal-head"><h3>Gemini API Key</h3></div>
-      <p style="font-size:13px;color:#64748b;margin-bottom:12px">Required for AI SEO Audit, Auto FAQ, and Auto Meta features.</p>
-      <input type="text" id="geminiKeyInput" placeholder="Enter your Gemini API key..." style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:0;margin-bottom:12px">
+      <div class="modal-head"><h3>BazaarLink AI Model</h3></div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px">Select the AI model used for AI SEO Audit, Auto FAQ, Auto Meta, and chat features. 3 models are ready to use:</p>
+      <select id="bazaarModelSelect" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:0;margin-bottom:12px"></select>
       <div style="display:flex;gap:10px">
-        <button class="btn-save" onclick="saveGeminiKey()"><i data-lucide="save" class="lu"></i> Save Key</button>
         <button class="btn-green" onclick="testGeminiKey()"><i data-lucide="search" class="lu"></i> Test Connection</button>
       </div>
       <p id="geminiStatus" style="font-size:13px;margin-top:10px"></p>
@@ -584,6 +583,12 @@ function esc(s){if(window.DOMPurify){return DOMPurify.sanitize(String(s),{ALLOWE
 
 const BLOG_KEY='docupdf_blogs';
 const GEMINI_KEY='docupdf_gemini_key';
+const BAZAARLINK_MODELS=[
+  {id:'deepseek/deepseek-v4-flash:free',name:'DeepSeek V4 Flash (Free)'},
+  {id:'auto:free',name:'Auto Router (Free)'},
+  {id:'kimi-k3',name:'Kimi K3 (Cheap)'}
+];
+const BAZAARLINK_MODEL_KEY='docupdf_bazaarlink_model';
 const BLOG_CATS=['PDF Tips','Convert PDF','Compress PDF','PDF Security','PDF Editing','Document Management','Productivity','Tutorial'];
 const ALL_TOOLS=['Merge PDF','Split PDF','Compress PDF','Rotate PDF','PDF to Word','Word to PDF','JPG to PDF','PDF to JPG','Protect PDF','Unlock PDF','Watermark PDF','OCR PDF','Organize PDF','Crop PDF','AI Summarizer','Delete Pages','eSignature','Compare PDF','Repair PDF','Redact PDF'];
 
@@ -617,12 +622,25 @@ function calcSEOScore(b){
 }
 
 function getGeminiKey(){return localStorage.getItem(GEMINI_KEY)||''}
+function getBazaarLinkModel(){return localStorage.getItem(BAZAARLINK_MODEL_KEY)||BAZAARLINK_MODELS[0].id}
+
+async function callBazaarLinkAI(action,payload){
+  const model=getBazaarLinkModel();
+  const res=await fetch('/api/bazaarlink/chat',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({action:action,model:model},payload))
+  });
+  const d=await res.json();
+  if(!res.ok)throw new Error(d.error||'API error');
+  return d.result||'';
+}
 
 async function callGemini(prompt){
   try{
-    const res=await fetch('/api/gemini/blog',{
+    const model=getBazaarLinkModel();
+    const res=await fetch('/api/bazaarlink/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'chat',prompt:prompt})
+      body:JSON.stringify({action:'chat',prompt:prompt,model:model})
     });
     const d=await res.json();
     if(!res.ok)throw new Error(d.error||'API error');
@@ -751,32 +769,35 @@ function editBlog(id){
 }
 
 function saveGeminiKey(){
-  const key=document.getElementById('geminiKeyInput').value.trim();
-  if(!key){alert('Enter a valid API key');return}
-  localStorage.setItem(GEMINI_KEY,key);
-  document.getElementById('geminiStatus').innerHTML='<span style="color:#059669"><i data-lucide="check-circle" class="lu"></i> API key saved successfully!</span>';
+  const sel=document.getElementById('bazaarModelSelect');
+  if(sel){localStorage.setItem(BAZAARLINK_MODEL_KEY,sel.value)}
+  document.getElementById('geminiStatus').innerHTML='<span style="color:#059669"><i data-lucide="check-circle" class="lu"></i> Model saved successfully!</span>';
   renderLucideIcons();
 }
 
 async function testGeminiKey(){
   const el=document.getElementById('geminiStatus');el.innerHTML='<span style="color:#7c3aed">Testing AI connection...</span>';
   try{
-    const res=await fetch('/api/gemini/blog',{
+    const res=await fetch('/api/bazaarlink/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'chat',prompt:'Say exactly: API working!'})
+      body:JSON.stringify({action:'chat',prompt:'Say exactly: API working!',model:getBazaarLinkModel()})
     });
     const d=await res.json();
-    if(res.ok){el.innerHTML='<span style="color:#059669"><i data-lucide="check-circle" class="lu"></i> Connection successful! AI service is working (OpenRouter).</span>'}
+    if(res.ok){el.innerHTML='<span style="color:#059669"><i data-lucide="check-circle" class="lu"></i> Connection successful! BazaarLink AI is working (model: '+esc(getBazaarLinkModel())+').</span>'}
     else{el.innerHTML='<span style="color:#dc2626"><i data-lucide="x-circle" class="lu"></i> Error: '+esc(d.error||'Unknown')+'</span>'}
   }catch(e){el.innerHTML='<span style="color:#dc2626"><i data-lucide="x-circle" class="lu"></i> Connection failed: '+esc(e.message)+'</span>'}
   renderLucideIcons();
 }
 
 function initSettings(){
-  const key=getGeminiKey();
-  if(key)document.getElementById('geminiKeyInput').value=key;
+  const sel=document.getElementById('bazaarModelSelect');
+  if(sel){
+    sel.innerHTML=BAZAARLINK_MODELS.map(m=>'<option value="'+m.id+'"'+(m.id===getBazaarLinkModel()?' selected':'')+'>'+m.name+'</option>').join('');
+    sel.onchange=saveGeminiKey;
+  }
   const blogs=getBlogs();
-  const geminiStats='<div class="stat-card icon"><div><span class="num">'+(key?'<i data-lucide="check-circle" class="lu" style="color:#059669;width:24px;height:24px"></i>':'<i data-lucide="x-circle" class="lu" style="color:#dc2626;width:24px;height:24px"></i>')+'</span></div><div><div class="label">Gemini API Key</div><div class="sub">'+(key?'Configured':'Not set')+'</div></div></div><div class="stat-card icon"><div><span class="num">'+blogs.length+'</span></div><div><div class="label">Total Blogs</div><div class="sub">'+blogs.filter(b=>b.published).length+' published</div></div></div>';
+  const mName=(BAZAARLINK_MODELS.find(m=>m.id===getBazaarLinkModel())||{}).name||getBazaarLinkModel();
+  const geminiStats='<div class="stat-card icon"><div><span class="num"><i data-lucide="check-circle" class="lu" style="color:#059669;width:24px;height:24px"></i></span></div><div><div class="label">BazaarLink AI</div><div class="sub">Active</div></div></div><div class="stat-card icon"><div><span class="num" style="font-size:13px">'+esc(mName)+'</span></div><div><div class="label">Selected Model</div><div class="sub">3 models available</div></div></div><div class="stat-card icon"><div><span class="num">'+blogs.length+'</span></div><div><div class="label">Total Blogs</div><div class="sub">'+blogs.filter(b=>b.published).length+' published</div></div></div>';
   document.getElementById('geminiStats').innerHTML=geminiStats;
   renderLucideIcons();
 }
