@@ -843,18 +843,35 @@ function copyImgPrompt(){
 function uploadBlogImage(input){
   const file=input.files&&input.files[0];
   if(!file)return;
+  const el=document.getElementById('blogSEOReport');
+  if(el){el.style.display='block';el.innerHTML='<span style="color:#0ea5e9"><i data-lucide="loader" class="lu"></i> Uploading image...</span>';renderLucideIcons();}
   const reader=new FileReader();
   reader.onload=function(e){
     const dataUrl=e.target.result;
-    document.getElementById('bfImage').value=dataUrl;
-    if(!document.getElementById('bfImageAlt').value.trim()){
-      const d=getBlogFormData();
-      document.getElementById('bfImageAlt').value=d.focusKeyword||d.title;
-    }
-    const prev=document.getElementById('imgPreview');
-    if(prev){prev.src=dataUrl;prev.style.display='block';}
-    renderSEOScore(getBlogFormData());
-    alert('Image uploaded and set as featured image!');
+    const base64=dataUrl.split(',')[1]||'';
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+    fetch('/api/upload',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base64:base64,ext:ext})
+    }).then(r=>r.json()).then(function(out){
+      if(out.url){
+        document.getElementById('bfImage').value=out.url;
+        if(!document.getElementById('bfImageAlt').value.trim()){
+          const d=getBlogFormData();
+          document.getElementById('bfImageAlt').value=d.focusKeyword||d.title;
+        }
+        const prev=document.getElementById('imgPreview');
+        if(prev){prev.src=out.url;prev.style.display='block';}
+        renderSEOScore(getBlogFormData());
+        if(el)el.innerHTML='<span style="color:#059669"><i data-lucide="check-circle" class="lu"></i> Image uploaded! Hosted at: '+esc(out.url)+'</span>';
+      }else{
+        if(el)el.innerHTML='<span style="color:#dc2626">Upload failed: '+esc(out.error||'unknown')+'</span>';
+      }
+      renderLucideIcons();
+    }).catch(function(err){
+      if(el)el.innerHTML='<span style="color:#dc2626">Upload error: '+esc(err.message)+'</span>';
+      renderLucideIcons();
+    });
   };
   reader.readAsDataURL(file);
 }
