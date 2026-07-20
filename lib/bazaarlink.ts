@@ -6,7 +6,7 @@ const BAZAARLINK_URL = 'https://bazaarlink.ai/api/v1/chat/completions';
 export const BAZAARLINK_MODELS = [
   { id: 'deepseek/deepseek-v4-flash:free', name: 'DeepSeek V4 Flash (Free)', free: true },
   { id: 'auto:free', name: 'Auto Router (Free)', free: true },
-  { id: 'kimi-k3', name: 'Kimi K3 (Cheap)', free: false },
+  { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash (Ultra Cheap)', free: false },
 ];
 
 export function getBazaarLinkKey(): string {
