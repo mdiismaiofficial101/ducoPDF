@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { getPageSEO } from '@/lib/seo';
 import JsonLd from '@/components/JsonLd';
-import { generateBreadcrumbSchema, generateSoftwareApplicationSchema } from '@/lib/seo';
+import ToolSEOSection from '@/components/ToolSEOSection';
+import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
 
 export const metadata: Metadata = getPageSEO('pdf-to-excel');
 
@@ -15,7 +16,9 @@ export default function ToolLayout({ children }: { children: React.ReactNode }) 
         { name: 'PDF to Excel', url: '/pdf-to-excel' },
       ])} />
       <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/pdf-to-excel')} />
+      {generateToolFAQ('pdf-to-excel') && <JsonLd data={generateToolFAQ('pdf-to-excel')!} />}
       {children}
+      <ToolSEOSection toolId="pdf-to-excel" toolTitle={toolName} toolDescription={typeof seo.description === 'string' ? seo.description : ''} />
     </>
   );
 }

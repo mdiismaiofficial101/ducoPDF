@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { getPageSEO } from '@/lib/seo';
 import JsonLd from '@/components/JsonLd';
-import { generateBreadcrumbSchema, generateSoftwareApplicationSchema } from '@/lib/seo';
+import ToolSEOSection from '@/components/ToolSEOSection';
+import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
 
 export const metadata: Metadata = getPageSEO('jpg-to-pdf');
 
@@ -15,7 +16,9 @@ export default function ToolLayout({ children }: { children: React.ReactNode }) 
         { name: 'JPG to PDF', url: '/jpg-to-pdf' },
       ])} />
       <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/jpg-to-pdf')} />
+      {generateToolFAQ('jpg-to-pdf') && <JsonLd data={generateToolFAQ('jpg-to-pdf')!} />}
       {children}
+      <ToolSEOSection toolId="jpg-to-pdf" toolTitle={toolName} toolDescription={typeof seo.description === 'string' ? seo.description : ''} />
     </>
   );
 }

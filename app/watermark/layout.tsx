@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { getPageSEO } from '@/lib/seo';
 import JsonLd from '@/components/JsonLd';
-import { generateBreadcrumbSchema, generateSoftwareApplicationSchema } from '@/lib/seo';
+import ToolSEOSection from '@/components/ToolSEOSection';
+import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
 
 export const metadata: Metadata = getPageSEO('watermark');
 
@@ -15,7 +16,9 @@ export default function ToolLayout({ children }: { children: React.ReactNode }) 
         { name: 'Watermark PDF', url: '/watermark' },
       ])} />
       <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/watermark')} />
+      {generateToolFAQ('watermark') && <JsonLd data={generateToolFAQ('watermark')!} />}
       {children}
+      <ToolSEOSection toolId="watermark" toolTitle={toolName} toolDescription={typeof seo.description === 'string' ? seo.description : ''} />
     </>
   );
 }

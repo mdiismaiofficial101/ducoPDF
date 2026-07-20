@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getPageSEO } from '@/lib/seo';
 import JsonLd from '@/components/JsonLd';
+import ToolSEOSection from '@/components/ToolSEOSection';
 import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
 
 export const metadata: Metadata = getPageSEO('summarizer');
@@ -17,6 +18,7 @@ export default function ToolLayout({ children }: { children: React.ReactNode }) 
       <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/summarizer')} />
       {generateToolFAQ('summarizer') && <JsonLd data={generateToolFAQ('summarizer')!} />}
       {children}
+      <ToolSEOSection toolId="summarizer" toolTitle={toolName} toolDescription={typeof seo.description === 'string' ? seo.description : ''} />
     </>
   );
 }

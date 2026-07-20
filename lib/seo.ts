@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { toolFAQs as toolFAQData } from '@/lib/tool-seo-data';
 
 const SITE_URL = 'https://cybronetwork.online';
 const SITE_NAME = 'DocuPDF';
@@ -470,40 +471,10 @@ export function generateFAQSchema(faqs: Array<{ question: string; answer: string
   };
 }
 
-export const toolFAQs: Record<string, Array<{ question: string; answer: string }>> = {
-  merge: [
-    { question: 'How do I merge PDF files online?', answer: 'Upload your PDF files, arrange them in the desired order using drag-and-drop, and click "Merge PDF". Your combined document will be ready to download instantly.' },
-    { question: 'Is there a file size limit for merging PDFs?', answer: 'DocuPDF supports large PDF files. Since processing happens entirely in your browser, the practical limit depends on your device memory. Most users can merge files totaling hundreds of megabytes.' },
-    { question: 'Are my files secure when merging?', answer: 'Yes. All PDF processing happens locally in your browser using client-side JavaScript. Your files are never uploaded to any server, ensuring complete privacy.' },
-  ],
-  split: [
-    { question: 'How do I split a PDF into separate files?', answer: 'Upload your PDF, select the pages you want to extract by clicking on their thumbnails, and click "Split PDF". You can extract individual pages or page ranges.' },
-    { question: 'Can I extract specific pages from a PDF?', answer: 'Yes. After uploading your PDF, click on individual page thumbnails to select them. You can also select page ranges for batch extraction.' },
-  ],
-  compress: [
-    { question: 'How much can I reduce PDF file size?', answer: 'Compression results vary depending on the content. Text-heavy PDFs can often be reduced by 50-80%, while image-heavy documents may see 20-50% reduction while maintaining quality.' },
-    { question: 'Does compression reduce PDF quality?', answer: 'DocuPDF uses intelligent compression that optimizes file size while preserving maximum visual quality. The compression is lossless for most document types.' },
-  ],
-  'pdf-to-word': [
-    { question: 'How do I convert PDF to Word?', answer: 'Upload your PDF file, and DocuPDF will convert it to an editable DOCX document. The conversion preserves text, formatting, images, and layout.' },
-    { question: 'Is the converted Word file editable?', answer: 'Yes. The converted DOCX file is fully editable in Microsoft Word, Google Docs, or any compatible word processor. All text and formatting are preserved.' },
-  ],
-  'word-to-pdf': [
-    { question: 'How do I convert Word to PDF?', answer: 'Upload your DOC or DOCX file, and DocuPDF will convert it to a PDF document while preserving all formatting, fonts, and layout.' },
-    { question: 'Does the PDF preserve Word formatting?', answer: 'Yes. Our converter maintains fonts, colors, images, tables, and page layout from your original Word document.' },
-  ],
-  protect: [
-    { question: 'How do I password-protect a PDF?', answer: 'Upload your PDF, enter a strong password, and click "Protect PDF". Your document will be encrypted with 256-bit AES encryption.' },
-    { question: 'What encryption is used for PDF protection?', answer: 'DocuPDF uses 256-bit AES encryption, the same standard used by banks and government agencies for securing sensitive documents.' },
-  ],
-  summarizer: [
-    { question: 'How does the AI PDF summarizer work?', answer: 'Upload your PDF and our AI (powered by Google Gemini) analyzes the document content to generate comprehensive summaries, key takeaways, or study questions.' },
-    { question: 'Is there a page limit for PDF summarization?', answer: 'The AI summarizer works best with documents up to 30 pages. For longer documents, we recommend splitting them first.' },
-  ],
-};
+export const toolFAQs = toolFAQData;
 
 export function generateToolFAQ(toolId: string) {
-  const faqs = toolFAQs[toolId];
+  const faqs = toolFAQData[toolId];
   if (!faqs) return null;
   return generateFAQSchema(faqs);
 }
