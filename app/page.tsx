@@ -7,7 +7,7 @@ import { motion } from 'motion/react';
 import TrustStatsBar from '@/components/TrustStatsBar';
 import AnimatedIcon from '@/components/AnimatedIcon';
 import JsonLd from '@/components/JsonLd';
-import { getPublishedBlogs, formatDate, calculateReadingTime } from '@/lib/blog';
+import { formatDate, calculateReadingTime } from '@/lib/blog';
 import { Calendar, Clock, TrendingUp, ArrowRight } from 'lucide-react';
 import AdBanner from '@/components/AdBanner';
 
@@ -80,10 +80,13 @@ export default function Home() {
   const [latestBlogs, setLatestBlogs] = useState<any[]>([]);
 
   useEffect(() => {
-    setLatestBlogs(getPublishedBlogs().slice(0, 3));
-    const handler = () => setLatestBlogs(getPublishedBlogs().slice(0, 3));
-    window.addEventListener('blog-updated', handler);
-    return () => window.removeEventListener('blog-updated', handler);
+    fetch('/api/blogs?published=1')
+      .then(r => r.json())
+      .then(d => {
+        const all: any[] = Array.isArray(d.blogs) ? d.blogs : [];
+        setLatestBlogs(all.filter((b: any) => b.published).slice(0, 3));
+      })
+      .catch(() => setLatestBlogs([]));
   }, []);
 
   const filteredTools = activeCategory === 'All'
