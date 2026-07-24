@@ -284,10 +284,10 @@ export default function Footer() {
             <span className="hidden sm:inline text-white/10">|</span>
             <span>Built by <a href="https://cybrotechnology.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 transition">CybroTechnology</a></span>
             <span className="hidden sm:inline text-white/10">|</span>
-            <span className="flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-600" />
-              <span>Complies with ISO 27001 & SOC2 Standards</span>
-            </span>
+              <span className="flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-slate-600" />
+                <span>Client-Side Secure Processing</span>
+              </span>
           </div>
 
           <div className="flex items-center space-x-3 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-xl hover:border-white/15 transition-all duration-300">

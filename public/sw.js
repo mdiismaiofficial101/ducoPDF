@@ -45,7 +45,7 @@ self.addEventListener('fetch', (event) => {
 async function networkFirstWithFallback(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (response.ok && response.status === 200) {
       const cache = await caches.open(CACHE);
       cache.put(request, response.clone());
     }
@@ -65,7 +65,7 @@ async function cacheFirstWithFallback(request) {
   if (cached) return cached;
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (response.ok && response.status === 200) {
       const cache = await caches.open(CACHE);
       cache.put(request, response.clone());
     }

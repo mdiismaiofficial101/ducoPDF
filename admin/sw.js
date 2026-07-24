@@ -1,4 +1,4 @@
-const ADMIN_CACHE = 'docupdf-admin-v1';
+const ADMIN_CACHE = 'docupdf-admin-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

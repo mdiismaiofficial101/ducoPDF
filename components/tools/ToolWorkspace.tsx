@@ -18,7 +18,11 @@ import * as XLSX from 'xlsx';
 
 import JSZip from 'jszip';
 import { addProcessingHistory } from '@/lib/auth';
+import AdBanner from '@/components/AdBanner';
 import { compressPDF, pdfToWord, pdfToExcel, pdfToPpt, comparePDFs, ocrPdf, pdfToMarkdown, createPdfForm, FormFieldDef, executeWorkflow, WorkflowStep, translatePDF, ocrToEditablePDF, checkPasswordStrength, PasswordStrengthResult, generateResumePDF, ResumeData, applySmartWatermark, WatermarkConfig } from '@/lib/pdf-tools';
+import { needsUnicodeFont, registerUnicodeFontJsPDF, getUnicodeFontForPdfLib } from '@/lib/unicode-fonts';
+import { processForPdfRendering, needsRTLReordering } from '@/lib/bidi';
+
 
 interface ToolConfig {
   name: string;
@@ -237,12 +241,88 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
         const buffer = await files[0].arrayBuffer();
         const { default: mammoth } = await import('mammoth');
         const conversion = await mammoth.convertToHtml({ arrayBuffer: buffer });
-        const text = conversion.value.replace(/<[^>]*>/g, '\n');
-        const doc = new jsPDF();
-        const splitText = doc.splitTextToSize(text, 180); let y = 20;
-        doc.setFont("helvetica", "normal"); doc.setFontSize(11);
-        splitText.forEach((line: string) => { if (y > 280) { doc.addPage(); y = 20; } doc.text(line, 15, y); y += 7; });
-        resultBlob = doc.output('blob'); outName = `${files[0].name.replace('.docx', '')}.pdf`;
+        const html = conversion.value;
+
+        const A4_W_PT = 595.28;
+        const A4_H_PT = 841.89;
+        const scale = 2;
+        const capW = Math.floor(A4_W_PT * scale);
+        const capH = Math.floor(A4_H_PT * scale);
+        const marginPx = 48; // ~24pt margin at 2x
+
+        // Prepend DpfWord to all font-family declarations in mammoth HTML
+        const injectedHtml = html.replace(/font-family\s*:\s*([^;"]+)/gi, (_, fonts) => {
+          return `font-family:'DpfWord', ${fonts}`;
+        });
+
+        // Isolated iframe rendering — must have real width so text flows naturally
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = `position:absolute;left:-9999px;top:0;width:${capW}px;border:none;`;
+        document.body.appendChild(iframe);
+        const iframeDoc = iframe.contentDocument!;
+        iframeDoc.open();
+        iframeDoc.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+body{margin:0;padding:${marginPx}px;background:white;font-family:'DpfWord',sans-serif;font-size:12pt;line-height:1.5;white-space:normal;overflow-wrap:break-word;word-wrap:break-word;}
+img{max-width:100%;height:auto;}
+table{max-width:100%;}
+p{margin:0;padding:0;}
+@font-face{font-family:'DpfWord';src:url('/fonts/NotoSans-Regular.ttf') format('truetype');unicode-range:U+0000-024F,U+0300-036F,U+0370-03FF,U+0400-04FF,U+0500-052F,U+1E00-1EFF,U+2000-206F,U+2070-209F,U+20A0-20CF,U+2100-214F,U+2150-218F,U+2190-21FF,U+2200-22FF,U+2300-23FF,U+2460-24FF,U+2500-257F,U+2580-259F,U+25A0-25FF,U+2600-26FF,U+2700-27BF,U+2C60-2C7F,U+A720-A7FF,U+FB00-FB4F,U+FE00-FE0F,U+FE10-FE1F,U+FE20-FE2F,U+FF00-FFEF}
+@font-face{font-family:'DpfWord';src:url('/fonts/NotoSansDevanagari-Regular.ttf') format('truetype');unicode-range:U+0900-097F,U+A8E0-A8FF,U+1CD0-1CFF}
+@font-face{font-family:'DpfWord';src:url('/fonts/NotoSansBengali-Regular.ttf') format('truetype');unicode-range:U+0980-09FF}
+@font-face{font-family:'DpfWord';src:url('/fonts/NotoSansArabic-Regular.ttf') format('truetype');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:'DpfWord';src:url('/fonts/NotoSansSC-Regular.ttf') format('truetype');unicode-range:U+4E00-9FFF,U+3400-4DBF,U+F900-FAFF,U+2F800-2FA1F}
+@font-face{font-family:'DpfWord';src:url('/fonts/NotoSansJP-Regular.ttf') format('truetype');unicode-range:U+3040-309F,U+30A0-30FF,U+31F0-31FF,U+1B000-1B001}
+</style></head><body>${injectedHtml}</body></html>`);
+        iframeDoc.close();
+
+        // Wait for fonts: check each font has loaded
+        await iframeDoc.fonts.ready;
+        // Verify all 6 font families have loaded
+        const expectedFonts = ['NotoSans-Regular', 'NotoSansDevanagari-Regular', 'NotoSansBengali-Regular', 'NotoSansArabic-Regular', 'NotoSansSC-Regular', 'NotoSansJP-Regular'];
+        for (const fName of expectedFonts) {
+          if (!iframeDoc.fonts.check(`12px "${fName}"`)) {
+            // Try loading explicitly
+            const f = new iframeDoc.defaultView!.FontFace(fName, `url('/fonts/${fName}.ttf') format('truetype')`);
+            await f.load();
+            iframeDoc.fonts.add(f);
+          }
+        }
+        await new Promise(r => setTimeout(r, 200));
+
+        const bodyEl = iframeDoc.body;
+        const contentW = bodyEl.scrollWidth;
+        const totalH = bodyEl.scrollHeight;
+        // Ensure capture width matches content
+        const captureW = Math.max(contentW, capW);
+
+        const { default: html2canvas } = await import('html2canvas');
+        const fullCanvas = await html2canvas(bodyEl, {
+          width: captureW, height: totalH, scale: 1,
+          useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false,
+        });
+        document.body.removeChild(iframe);
+
+        const pdfDoc = await PDFDocument.create();
+        const numPages = Math.max(1, Math.ceil(totalH / capH));
+        for (let i = 0; i < numPages; i++) {
+          const page = pdfDoc.addPage([A4_W_PT, A4_H_PT]);
+          const srcY = i * capH;
+          const srcH = Math.min(capH, totalH - srcY);
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = captureW; pageCanvas.height = capH;
+          const ctx = pageCanvas.getContext('2d')!;
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, captureW, capH);
+          ctx.drawImage(fullCanvas, 0, srcY, captureW, srcH, 0, 0, captureW, capH);
+          const imgBlob = await new Promise<Blob>(r => pageCanvas.toBlob(r!, 'image/jpeg', 0.92));
+          const img = await pdfDoc.embedJpg(await imgBlob.arrayBuffer());
+          const imgW = A4_W_PT;
+          const imgH = (srcH / capH) * A4_H_PT;
+          page.drawImage(img, { x: 0, y: 0, width: imgW, height: imgH });
+        }
+        const bytes = await pdfDoc.save();
+        resultBlob = new Blob([bytes], { type: 'application/pdf' });
+        outName = `${files[0].name.replace('.docx', '')}.pdf`;
       }
       else if (toolId === 'pdf-to-word') { const r = await pdfToWord(files[0]); resultBlob = r.blob; outName = r.name; }
       else if (toolId === 'jpg-to-pdf') {
@@ -294,13 +374,13 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
       }
       else if (toolId === 'page-numbers') {
         const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
-        const pages = pdf.getPages(); const helveticaFont = await pdf.embedFont(StandardFonts.Helvetica);
+        const pages = pdf.getPages(); const pageNumFont = await pdf.embedFont(StandardFonts.Helvetica);
         pages.forEach((page, index) => {
           const { width, height } = page.getSize(); const text = `${index + 1}`;
           let x = width / 2; let y = 30;
           if (pageNumPos === 'bottom-right') x = width - 50;
           else if (pageNumPos === 'top-center') y = height - 30;
-          page.drawText(text, { x, y, size: 11, font: helveticaFont, color: rgb(0.1, 0.1, 0.5) });
+          page.drawText(text, { x, y, size: 11, font: pageNumFont, color: rgb(0.1, 0.1, 0.5) });
         });
         const bytes = await pdf.save(); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `numbered_${files[0].name}`;
       }
@@ -308,7 +388,16 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
       else if (toolId === 'excel-to-pdf') {
         const buffer = await files[0].arrayBuffer(); const wb = XLSX.read(buffer, { type: 'array' });
         const rawJson = XLSX.utils.sheet_to_json<string[]>(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-        const doc = new jsPDF(); doc.setFontSize(16); doc.text('DocuPDF Excel-to-PDF Report', 15, 20);
+        const doc = new jsPDF();
+
+        // Detect if Excel content needs Unicode font
+        const allRowText = rawJson.slice(0, 40).map((row: any) => Array.isArray(row) ? row.join(' ') : JSON.stringify(row)).join(' ');
+        let userFont = 'helvetica';
+        if (needsUnicodeFont(allRowText) || needsUnicodeFont(wb.SheetNames[0])) {
+          userFont = await registerUnicodeFontJsPDF(doc, allRowText + wb.SheetNames[0]);
+        }
+
+        doc.setFontSize(16); doc.setFont(userFont, 'normal'); doc.text('DocuPDF Excel-to-PDF Report', 15, 20);
         doc.setFontSize(10); doc.text(`Sheet: ${wb.SheetNames[0]}`, 15, 28); let y = 40;
         rawJson.slice(0, 40).forEach((row: any) => {
           const rowStr = Array.isArray(row) ? row.join(' | ') : JSON.stringify(row);
@@ -325,9 +414,17 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
       }
       else if (toolId === 'watermark') {
         const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
+        let wmFont = await pdf.embedFont(StandardFonts.Helvetica);
+        if (needsUnicodeFont(wmText)) {
+          wmFont = await getUnicodeFontForPdfLib(wmText, pdf);
+        }
+        let drawWmText = wmText;
+        if (needsRTLReordering(wmText)) {
+          drawWmText = processForPdfRendering(wmText);
+        }
         pdf.getPages().forEach((page) => {
           const { width, height } = page.getSize();
-          page.drawText(wmText, { x: width / 4, y: height / 2, size: wmSize, color: rgb(0.8, 0.1, 0.1), opacity: wmOpacity, rotate: degrees(45) });
+          page.drawText(drawWmText, { x: width / 4, y: height / 2, size: wmSize, font: wmFont, color: rgb(0.8, 0.1, 0.1), opacity: wmOpacity, rotate: degrees(45) });
         });
         const bytes = await pdf.save(); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `watermarked_${files[0].name}`;
       }
@@ -400,8 +497,17 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
       else if (toolId === 'translate') {
         const res = await fetch('/api/gemini/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'translate', text: 'High-Fidelity Document layout content.', targetLanguage: targetLang }) });
         const data = await res.json(); const translatedText = data.result || '(Translated text)';
-        const doc = new jsPDF(); doc.setFontSize(16); doc.text(`DocuPDF AI Translated (${targetLang})`, 15, 20);
-        doc.setFontSize(10); doc.text(`Source: ${files[0].name}`, 15, 28); doc.setFont("helvetica", "normal");
+        const doc = new jsPDF(); doc.setFontSize(16);
+
+        // Detect if translated text needs Unicode font
+        let userFont = 'helvetica';
+        const allText = `DocuPDF AI Translated (${targetLang})` + translatedText + files[0].name;
+        if (needsUnicodeFont(allText)) {
+          userFont = await registerUnicodeFontJsPDF(doc, allText);
+        }
+
+        doc.setFont(userFont, 'normal'); doc.text(`DocuPDF AI Translated (${targetLang})`, 15, 20);
+        doc.setFontSize(10); doc.text(`Source: ${files[0].name}`, 15, 28);
         const splitText = doc.splitTextToSize(translatedText, 180); doc.text(splitText, 15, 40);
         resultBlob = doc.output('blob'); outName = `translated_${targetLang}_${files[0].name}`;
       }
@@ -426,7 +532,7 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
       }
       else if (toolId === 'resume-builder') {
         if (!resumeData.fullName) throw new Error('Please enter your full name.');
-        const r = generateResumePDF(resumeData); resultBlob = r.blob; outName = r.name;
+        const r = await generateResumePDF(resumeData); resultBlob = r.blob; outName = r.name;
       }
       else if (toolId === 'smart-watermark') {
         if (files.length === 0) throw new Error('Please upload a PDF file.');
@@ -491,6 +597,8 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
             <p className="text-slate-600 mt-1 text-base leading-relaxed">{tool.description}</p>
           </div>
         </div>
+
+        <AdBanner className="mb-6" />
 
         {errorMsg && (
           <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6 flex items-start space-x-3 text-red-800">
@@ -568,7 +676,7 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
                       <div className="grid grid-cols-3 gap-3">
                         {capturedImages.map((img, idx) => (
                           <div key={idx} className="relative rounded-lg overflow-hidden border border-slate-200 aspect-square group">
-                            <img src={img} className="w-full h-full object-cover" alt="" />
+                            <img src={img} className="w-full h-full object-cover" alt="PDF page preview" />
                             <button onClick={() => setCapturedImages(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-white/90 hover:bg-red-500 hover:text-white p-1 rounded-full text-slate-500 shadow-sm cursor-pointer"><Trash className="w-3.5 h-3.5" /></button>
                           </div>
                         ))}

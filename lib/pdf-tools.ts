@@ -2,6 +2,15 @@ import { PDFDocument, rgb, degrees, StandardFonts, PDFFont, PDFImage } from 'pdf
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+import {
+  getUnicodeFontForPdfLib,
+  registerUnicodeFontJsPDF,
+  needsUnicodeFont,
+  wrapText,
+  detectPrimaryScript,
+  fetchFontBytes,
+} from './unicode-fonts';
+import { processForPdfRendering, needsRTLReordering } from './bidi';
 
 // ─── REAL COMPRESS PDF ───────────────────────────────────────────────
 export async function compressPDF(file: File): Promise<{ blob: Blob; name: string }> {
@@ -217,7 +226,11 @@ export async function comparePDFs(file1: File, file2: File): Promise<{ blob: Blo
 }
 
 // ─── REAL OCR PDF ────────────────────────────────────────────────────
-export async function ocrPdf(file: File, onProgress?: (msg: string) => void): Promise<string> {
+export async function ocrPdf(
+  file: File,
+  onProgress?: (msg: string) => void,
+  languages?: string[]
+): Promise<string> {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -226,7 +239,9 @@ export async function ocrPdf(file: File, onProgress?: (msg: string) => void): Pr
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
   let fullText = '';
 
-  const worker = await Tesseract.createWorker('eng');
+  const ocrLangs = languages && languages.length > 0 ? languages : ['eng'];
+  const langString = ocrLangs.join('+');
+  const worker = await Tesseract.createWorker(langString);
 
   for (let i = 1; i <= pdf.numPages; i++) {
     onProgress?.(`OCR processing page ${i}/${pdf.numPages}...`);
@@ -341,7 +356,14 @@ export async function executeWorkflow(
 ): Promise<{ blob: Blob; name: string }> {
   const buffer = await file.arrayBuffer();
   let pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  let font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  const getFontForStep = async (text: string): Promise<PDFFont> => {
+    if (needsUnicodeFont(text)) {
+      return await getUnicodeFontForPdfLib(text, pdfDoc);
+    }
+    return font;
+  };
 
   for (const step of steps) {
     const pages = pdfDoc.getPages();
@@ -355,11 +377,12 @@ export async function executeWorkflow(
       case 'watermark': {
         const text = step.config?.text || 'WORKFLOW';
         const opacity = step.config?.opacity ?? 0.15;
+        const wmFont = await getFontForStep(text);
         pages.forEach(page => {
           const { width, height } = page.getSize();
           page.drawText(text, {
             x: width / 4, y: height / 2,
-            size: 48, font: helveticaFont,
+            size: 48, font: wmFont,
             color: rgb(0.3, 0.3, 0.3),
             opacity, rotate: degrees(30),
           });
@@ -384,7 +407,7 @@ export async function executeWorkflow(
           const { width } = page.getSize();
           page.drawText(`${idx + 1}`, {
             x: width / 2, y: 30, size: 11,
-            font: helveticaFont, color: rgb(0.1, 0.1, 0.5),
+            font, color: rgb(0.1, 0.1, 0.5),
           });
         });
         break;
@@ -473,7 +496,7 @@ export async function translatePDF(
   const translatedText = await translateViaLibreTranslate(fullText, langCode);
 
   const pdfDoc = await PDFDocument.create();
-  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fallbackFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
   const pageBlocks = translatedText.split('---PAGE_BREAK---');
   for (let i = 0; i < pageBlocks.length; i++) {
@@ -481,18 +504,26 @@ export async function translatePDF(
     const page = pdfDoc.addPage([612, 792]);
     const { height } = page.getSize();
 
+    const blockFont = needsUnicodeFont(block)
+      ? await getUnicodeFontForPdfLib(block, pdfDoc)
+      : fallbackFont;
+
     page.drawText(`Page ${i + 1}`, {
-      x: 50, y: height - 40, size: 10, font: helveticaFont, color: rgb(0.4, 0.4, 0.4),
+      x: 50, y: height - 40, size: 10, font: blockFont, color: rgb(0.4, 0.4, 0.4),
     });
 
     const fontSize = 11;
     const maxWidth = 500;
     let y = height - 60;
-    const lines = splitTextToLines(block, maxWidth, fontSize, helveticaFont);
+    const lines = wrapText(block, maxWidth, fontSize, blockFont);
 
     for (const line of lines) {
       if (y < 40) break;
-      page.drawText(line, { x: 50, y, size: fontSize, font: helveticaFont, color: rgb(0, 0, 0) });
+      let drawText = line;
+      if (needsRTLReordering(line)) {
+        drawText = processForPdfRendering(line);
+      }
+      page.drawText(drawText, { x: 50, y, size: fontSize, font: blockFont, color: rgb(0, 0, 0) });
       y -= 16;
     }
   }
@@ -503,21 +534,7 @@ export async function translatePDF(
 }
 
 function splitTextToLines(text: string, maxWidth: number, fontSize: number, font: PDFFont): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let currentLine = '';
-  for (const word of words) {
-    const testLine = currentLine ? currentLine + ' ' + word : word;
-    const width = font.widthOfTextAtSize(testLine, fontSize);
-    if (width <= maxWidth) {
-      currentLine = testLine;
-    } else {
-      if (currentLine) lines.push(currentLine);
-      currentLine = word;
-    }
-  }
-  if (currentLine) lines.push(currentLine);
-  return lines;
+  return wrapText(text, maxWidth, fontSize, font);
 }
 
 async function translateViaLibreTranslate(text: string, targetCode: string): Promise<string> {
@@ -539,7 +556,8 @@ async function translateViaLibreTranslate(text: string, targetCode: string): Pro
 // ─── FEATURE 2: OCR TO EDITABLE PDF ───────────────────────────────────
 export async function ocrToEditablePDF(
   file: File,
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  languages?: string[]
 ): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -548,9 +566,11 @@ export async function ocrToEditablePDF(
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
   const pdfDoc = await PDFDocument.create();
-  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fallbackFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const worker = await Tesseract.createWorker('eng');
+  const ocrLangs = languages && languages.length > 0 ? languages : ['eng'];
+  const langString = ocrLangs.join('+');
+  const worker = await Tesseract.createWorker(langString);
 
   for (let i = 1; i <= pdf.numPages; i++) {
     onProgress?.(`OCR processing page ${i}/${pdf.numPages}...`);
@@ -577,6 +597,11 @@ export async function ocrToEditablePDF(
     newPage.drawImage(embeddedImg, { x: 0, y: 0, width: vp.width, height: vp.height });
 
     const fontSize = 10;
+    const ocrTextAll = ocrData.words.map((w: any) => w.text).join(' ');
+    const ocrFont = needsUnicodeFont(ocrTextAll)
+      ? await getUnicodeFontForPdfLib(ocrTextAll, pdfDoc)
+      : fallbackFont;
+
     for (const word of ocrData.words) {
       const x = word.bbox.x0 * (vp.width / canvas.width);
       const y = vp.height - word.bbox.y1 * (vp.height / canvas.height);
@@ -584,8 +609,12 @@ export async function ocrToEditablePDF(
       const h = (word.bbox.y1 - word.bbox.y0) * (vp.height / canvas.height);
       const fontSizeAdjusted = h * 0.8;
       if (fontSizeAdjusted < 3) continue;
-      newPage.drawText(word.text, {
-        x, y, size: fontSizeAdjusted, font: helveticaFont,
+      let drawText = word.text;
+      if (needsRTLReordering(word.text)) {
+        drawText = processForPdfRendering(word.text);
+      }
+      newPage.drawText(drawText, {
+        x, y, size: fontSizeAdjusted, font: ocrFont,
         color: rgb(0, 0, 0), opacity: 0.001,
       });
     }
@@ -665,110 +694,99 @@ export interface ResumeData {
   template: 'modern' | 'professional' | 'minimal';
 }
 
-export function generateResumePDF(data: ResumeData): { blob: Blob; name: string } {
-  const doc = new jsPDF('p', 'mm', 'a4');
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 20;
+export async function generateResumePDF(data: ResumeData): Promise<{ blob: Blob; name: string }> {
+  const pdfDoc = await PDFDocument.create();
+  const A4_W = 595.28;
+  const A4_H = 841.89;
+  const margin = 57; // ~20mm
+  const maxW = A4_W - 2 * margin;
+
+  const allText = [data.fullName, data.title, data.summary, data.email, data.phone,
+    ...data.experience.flatMap(e => [e.role, e.company, e.period, e.description]),
+    ...data.education.flatMap(e => [e.degree, e.school, e.year]),
+    ...data.skills
+  ].join(' ');
+
+  const fonts = await getUnicodeFontPairPdfLib(allText, pdfDoc);
+  const userFont = fonts.regular;
+  const boldFont = fonts.bold;
+
+  let page = pdfDoc.addPage([A4_W, A4_H]);
   let y = margin;
 
+  const addPage = () => { page = pdfDoc.addPage([A4_W, A4_H]); y = margin; };
+
   const addSection = (title: string) => {
-    if (y > pageH - 40) { doc.addPage(); y = margin; }
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, margin, y);
-    y += 2;
-    doc.setDrawColor(0, 0, 0);
-    doc.line(margin, y, pageW - margin, y);
-    y += 6;
+    if (y > A4_H - 113) addPage();
+    page.drawText(title, { x: margin, y, size: 14, font: boldFont });
+    y -= 4;
+    page.drawLine({ start: { x: margin, y }, end: { x: A4_W - margin, y }, thickness: 0.5 });
+    y -= 14;
+  };
+
+  const drawWrappedText = (text: string, x: number, fontSize: number, font: any, lineH: number) => {
+    const lines = wrapText(text, maxW - (x - margin), fontSize, font);
+    for (const line of lines) {
+      if (y < 40) { addPage(); }
+      page.drawText(line, { x, y, size: fontSize, font });
+      y -= lineH;
+    }
   };
 
   if (data.template === 'modern') {
-    doc.setFillColor(26, 35, 126);
-    doc.rect(0, 0, pageW, 50, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text(data.fullName, margin, 28);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${data.title} | ${data.location}`, margin, 40);
-    doc.setTextColor(0, 0, 0);
-    y = 60;
-
-    doc.setFontSize(9);
-    doc.text(`${data.email} | ${data.phone}`, margin, y);
-    y += 8;
+    page.drawRectangle({ x: 0, y: A4_H - 142, width: A4_W, height: 142, color: rgb(26/255, 35/255, 126/255) });
+    page.drawText(data.fullName, { x: margin, y: A4_H - 65, size: 24, font: boldFont, color: rgb(1,1,1) });
+    page.drawText(`${data.title} | ${data.location}`, { x: margin, y: A4_H - 90, size: 11, font: userFont, color: rgb(1,1,1) });
+    y = A4_H - 170;
+    page.drawText(`${data.email} | ${data.phone}`, { x: margin, y, size: 9, font: userFont });
+    y -= 20;
   } else {
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text(data.fullName, margin, y);
-    y += 7;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'italic');
-    doc.text(data.title, margin, y);
-    y += 6;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${data.email} | ${data.phone} | ${data.location}`, margin, y);
-    y += 10;
+    page.drawText(data.fullName, { x: margin, y, size: 22, font: boldFont });
+    y -= 16;
+    page.drawText(data.title, { x: margin, y, size: 12, font: userFont });
+    y -= 14;
+    page.drawText(`${data.email} | ${data.phone} | ${data.location}`, { x: margin, y, size: 10, font: userFont });
+    y -= 24;
   }
 
   if (data.summary) {
     addSection('Professional Summary');
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const lines = doc.splitTextToSize(data.summary, pageW - 2 * margin);
-    doc.text(lines, margin, y);
-    y += lines.length * 5 + 8;
+    drawWrappedText(data.summary, margin, 10, userFont, 14);
+    y -= 8;
   }
 
   if (data.experience.length > 0) {
     addSection('Experience');
-    doc.setFontSize(10);
     for (const exp of data.experience) {
-      if (y > pageH - 40) { doc.addPage(); y = margin; }
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${exp.role} at ${exp.company}`, margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(exp.period, pageW - margin - doc.getTextWidth(exp.period), y);
-      y += 5;
-      doc.setFontSize(9);
-      const descLines = doc.splitTextToSize(exp.description, pageW - 2 * margin);
-      doc.text(descLines, margin + 3, y);
-      y += descLines.length * 4 + 6;
-      doc.setFontSize(10);
+      if (y < 100) addPage();
+      page.drawText(`${exp.role} at ${exp.company}`, { x: margin, y, size: 10, font: boldFont });
+      const periodW = boldFont.widthOfTextAtSize(exp.period, 9);
+      page.drawText(exp.period, { x: A4_W - margin - periodW, y, size: 9, font: userFont });
+      y -= 12;
+      drawWrappedText(exp.description, margin + 8, 9, userFont, 12);
+      y -= 14;
     }
   }
 
   if (data.education.length > 0) {
     addSection('Education');
-    doc.setFontSize(10);
     for (const edu of data.education) {
-      if (y > pageH - 40) { doc.addPage(); y = margin; }
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${edu.degree} - ${edu.school}`, margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(edu.year, pageW - margin - doc.getTextWidth(edu.year), y);
-      y += 7;
-      doc.setFontSize(10);
+      if (y < 100) addPage();
+      page.drawText(`${edu.degree} - ${edu.school}`, { x: margin, y, size: 10, font: boldFont });
+      const yearW = boldFont.widthOfTextAtSize(edu.year, 9);
+      page.drawText(edu.year, { x: A4_W - margin - yearW, y, size: 9, font: userFont });
+      y -= 18;
     }
   }
 
   if (data.skills.length > 0) {
     addSection('Skills');
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const skillsText = data.skills.join('  •  ');
-    const skillLines = doc.splitTextToSize(skillsText, pageW - 2 * margin);
-    doc.text(skillLines, margin, y);
-    y += skillLines.length * 5 + 6;
+    drawWrappedText(data.skills.join('  •  '), margin, 10, userFont, 15);
   }
 
+  const bytes = await pdfDoc.save();
   return {
-    blob: doc.output('blob'),
+    blob: new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }),
     name: `${data.fullName.replace(/\s+/g, '_')}_Resume.pdf`,
   };
 }
@@ -792,11 +810,16 @@ export async function applySmartWatermark(
 ): Promise<{ blob: Blob; name: string }> {
   const buffer = await file.arrayBuffer();
   const pdfDoc = await PDFDocument.load(buffer);
-  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fallbackFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const allPages = pdfDoc.getPages();
   const fontSize = config.fontSize || 48;
   const opacity = config.opacity ?? 0.2;
   const rotation = config.rotation ?? 45;
+
+  let watermarkFont = fallbackFont;
+  if (config.text && needsUnicodeFont(config.text)) {
+    watermarkFont = await getUnicodeFontForPdfLib(config.text, pdfDoc);
+  }
 
   let targetIndices: number[];
   if (config.pages === 'first') targetIndices = [0];
@@ -843,9 +866,13 @@ export async function applySmartWatermark(
 
     for (const pos of positions) {
       if (config.text) {
-        page.drawText(config.text, {
+        let drawText = config.text;
+        if (needsRTLReordering(config.text)) {
+          drawText = processForPdfRendering(config.text);
+        }
+        page.drawText(drawText, {
           x: pos.x, y: pos.y, size: fontSize,
-          font: helveticaFont,
+          font: watermarkFont,
           color: rgb(textColor.r, textColor.g, textColor.b),
           opacity, rotate: degrees(rotation),
         });
@@ -914,40 +941,53 @@ export function updateTemplate(id: string, updates: Partial<Template>): void {
 }
 
 export async function generateTemplatePDF(template: Template): Promise<{ blob: Blob; name: string }> {
-  const doc = new jsPDF('p', 'mm', 'a4');
-  const pageW = doc.internal.pageSize.getWidth();
-  let y = 20;
+  const pdfDoc = await PDFDocument.create();
+  const A4_W = 595.28;
+  const A4_H = 841.89;
+  const margin = 57;
+  const maxW = A4_W - 2 * margin;
 
-  doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
-  doc.text(template.name, 20, y);
-  y += 10;
+  const allContent = JSON.stringify(template.content);
+  const fonts = await getUnicodeFontPairPdfLib(template.name + allContent, pdfDoc);
+  const userFont = fonts.regular;
+  const boldFont = fonts.bold;
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
+  let page = pdfDoc.addPage([A4_W, A4_H]);
+  let y = A4_H - margin;
+
+  const addPage = () => { page = pdfDoc.addPage([A4_W, A4_H]); y = A4_H - margin; };
+
+  page.drawText(template.name, { x: margin, y, size: 22, font: boldFont });
+  y -= 24;
 
   const renderContent = (obj: Record<string, any>, indent = 0) => {
+    const indentStr = '  '.repeat(indent);
     for (const [key, value] of Object.entries(obj)) {
-      if (y > 270) { doc.addPage(); y = 20; }
+      if (y < 60) addPage();
       if (typeof value === 'object' && value !== null) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${'  '.repeat(indent)}${key}:`, 20, y);
-        y += 6;
-        doc.setFont('helvetica', 'normal');
+        const header = `${indentStr}${key}:`;
+        const headerW = boldFont.widthOfTextAtSize(header, 10);
+        page.drawText(header, { x: margin + indent * 12, y, size: 10, font: boldFont });
+        y -= 14;
         renderContent(value, indent + 1);
       } else {
-        const prefix = indent > 0 ? '  '.repeat(indent) : '';
+        const prefix = indent > 0 ? indentStr : '';
         const text = `${prefix}${key}: ${value}`;
-        const lines = doc.splitTextToSize(text, pageW - 40);
-        doc.text(lines, 20, y);
-        y += lines.length * 5 + 2;
+        const lines = wrapText(text, maxW, 10, userFont);
+        for (const line of lines) {
+          if (y < 40) addPage();
+          page.drawText(line, { x: margin + indent * 12, y, size: 10, font: userFont });
+          y -= 13;
+        }
+        y -= 4;
       }
     }
   };
 
   renderContent(template.content);
 
-  return { blob: doc.output('blob'), name: `${template.name.replace(/\s+/g, '_')}.pdf` };
+  const bytes = await pdfDoc.save();
+  return { blob: new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), name: `${template.name.replace(/\s+/g, '_')}.pdf` };
 }
 
 // ─── FEATURE 7: COMMUNITY Q&A ────────────────────────────────────────

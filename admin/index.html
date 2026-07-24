@@ -10,7 +10,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="DocuPDF Admin">
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.0/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
@@ -103,6 +102,7 @@ tr:hover td{background:#f8fafc}
   .tabs{overflow-x:auto;flex-wrap:nowrap}
   .tab{padding:8px 12px;font-size:12px}
   .bar-chart{height:80px}
+  .dz-hover{border-color:#6366f1!important;background:#eef2ff!important}
 }
 </style>
 </head>
@@ -114,7 +114,7 @@ tr:hover td{background:#f8fafc}
     <p>DocuPDF administration</p>
     <input type="text" id="userInput" placeholder="Username" autofocus>
     <input type="password" id="passInput" placeholder="Password">
-    <div id="turnstileWidget" class="cf-turnstile" data-sitekey="0x4AAAAAAA0x4AAAAAAA" data-theme="light" style="margin:12px 0"></div>
+    <div id="turnstileWidget" style="display:none"></div>
     <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;font-size:13px;color:#64748b">
       <input type="checkbox" id="rememberMe" checked style="width:16px;height:16px;cursor:pointer">
       <label for="rememberMe" style="cursor:pointer">Remember me</label>
@@ -320,10 +320,9 @@ async function doLogin(){
   if(!u||!p){showErr('Enter username and password');return}
   const btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='Verifying...';
   try{
-    const turnstileToken=document.querySelector('.cf-turnstile iframe')?'dummy-turnstile-token':'';
     const res=await fetch('/api/auth/login',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username:u,password:p,turnstileToken})
+      body:JSON.stringify({username:u,password:p,turnstileToken:''})
     });
     const d=await res.json();
     if(res.ok){
@@ -678,7 +677,7 @@ async function delBlog(id,title){if(!confirm('Delete "'+title+'"?'))return;try{a
 function openBlogForm(existing){
   const b=existing||{id:'',title:'',slug:'',category:'',featuredImage:'',imageAlt:'',shortDescription:'',content:'',metaTitle:'',metaDescription:'',focusKeyword:'',tags:[],canonicalUrl:'',publishDate:new Date().toISOString().split('T')[0],author:'Admin',faq:[],relatedTools:[],relatedBlogs:[],published:false,createdAt:'',updatedAt:''};
   const isEdit=!!existing;
-  document.getElementById('blogForm').innerHTML='<div class="modal-head"><h3>'+(isEdit?'Edit Blog Post':'New Blog Post')+'</h3><button onclick="closeBlogForm()"><i data-lucide="x" class="lu"></i></button></div><div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn-sm" onclick="autoSeo()" style="background:linear-gradient(90deg,#7c3aed,#0891b2)"><i data-lucide="wand-2" class="lu"></i> Auto AI SEO (100%)</button><button class="btn-sm" onclick="autoImage()" style="background:linear-gradient(90deg,#db2777,#f59e0b)"><i data-lucide="image" class="lu"></i> Auto Image Prompt</button><button class="btn-sm" onclick="aiAudit()" style="background:#7c3aed"><i data-lucide="sparkles" class="lu"></i> AI SEO Audit</button><button class="btn-sm" onclick="aiFaq()" style="background:#0891b2"><i data-lucide="help-circle" class="lu"></i> Auto FAQ</button><button class="btn-sm" onclick="aiMeta()" style="background:#059669"><i data-lucide="clipboard-list" class="lu"></i> Auto Meta</button></div><div class="grid-2"><input type="text" id="bfTitle" placeholder="Blog Title" value="'+esc(b.title)+'"><input type="text" id="bfKeyword" placeholder="Focus Keyword" value="'+esc(b.focusKeyword||'')+'"></div><div class="grid-2"><select id="bfCategory">'+BLOG_CATS.map(c=>'<option value="'+c+'"'+(c===b.category?' selected':'')+'>'+c+'</option>').join('')+'</select><input type="date" id="bfDate" value="'+b.publishDate+'"></div><input type="text" id="bfImage" placeholder="Featured Image URL" value="'+esc(b.featuredImage||'')+'"><div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap"><label class="btn-sm" style="background:#0ea5e9;cursor:pointer"><i data-lucide="upload" class="lu"></i> Upload Image<input type="file" accept="image/*" onchange="uploadBlogImage(this)" style="display:none"></label><span style="font-size:11px;color:#94a3b8">or paste URL above</span></div><img id="imgPreview" src="'+(b.featuredImage||'')+'" style="max-width:100%;max-height:160px;margin-top:8px;border-radius:8px;border:1px solid #e2e8f0;display:'+(b.featuredImage?'block':'none')+'"><input type="text" id="bfImageAlt" placeholder="Image Alt Text" value="'+esc(b.imageAlt||'')+'"><textarea id="bfShortDesc" placeholder="Short Description (50+ chars)" style="height:60px">'+esc(b.shortDescription||'')+'</textarea><textarea id="bfContent" placeholder="Content (HTML)">'+esc(b.content||'')+'</textarea><div class="grid-2"><input type="text" id="bfMetaTitle" placeholder="Meta Title" value="'+esc(b.metaTitle||'')+'"><input type="text" id="bfMetaDesc" placeholder="Meta Description" value="'+esc(b.metaDescription||'')+'"></div><input type="text" id="bfCanonical" placeholder="Canonical URL" value="'+esc(b.canonicalUrl||'')+'"><input type="text" id="bfTags" placeholder="Tags (comma separated)" value="'+esc((b.tags||[]).join(', '))+'"><input type="text" id="bfAuthor" placeholder="Author" value="'+esc(b.author||'Admin')+'"><div style="margin:12px 0"><label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px"><input type="checkbox" id="bfPublished" '+(b.published?'checked':'')+'> Published</label></div><div id="blogSEOReport" style="margin:12px 0;padding:12px;background:#f8fafc;border-radius:10px;font-size:12px;display:none"></div><input type="hidden" id="bfFaq" value="'+esc(JSON.stringify(b.faq||[]))+'"><input type="hidden" id="bfRelatedTools" value="'+esc(JSON.stringify(b.relatedTools||[]))+'"><button class="btn-save" onclick="saveBlogForm(\''+b.id+'\')"><i data-lucide="save" class="lu"></i> '+(isEdit?'Update':'Create')+' Blog Post</button>';document.getElementById('blogForm').style.display='block';renderLucideIcons();
+  document.getElementById('blogForm').innerHTML='<div class="modal-head"><h3>'+(isEdit?'Edit Blog Post':'New Blog Post')+'</h3><button onclick="closeBlogForm()"><i data-lucide="x" class="lu"></i></button></div><div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn-sm" onclick="autoSeo()" style="background:linear-gradient(90deg,#7c3aed,#0891b2)"><i data-lucide="wand-2" class="lu"></i> Auto AI SEO (100%)</button><button class="btn-sm" onclick="autoImage()" style="background:linear-gradient(90deg,#db2777,#f59e0b)"><i data-lucide="image" class="lu"></i> Auto Image Prompt</button><button class="btn-sm" onclick="aiAudit()" style="background:#7c3aed"><i data-lucide="sparkles" class="lu"></i> AI SEO Audit</button><button class="btn-sm" onclick="aiFaq()" style="background:#0891b2"><i data-lucide="help-circle" class="lu"></i> Auto FAQ</button><button class="btn-sm" onclick="aiMeta()" style="background:#059669"><i data-lucide="clipboard-list" class="lu"></i> Auto Meta</button></div><div class="grid-2"><input type="text" id="bfTitle" placeholder="Blog Title" value="'+esc(b.title)+'"><input type="text" id="bfKeyword" placeholder="Focus Keyword" value="'+esc(b.focusKeyword||'')+'"></div><div class="grid-2"><select id="bfCategory">'+BLOG_CATS.map(c=>'<option value="'+c+'"'+(c===b.category?' selected':'')+'>'+c+'</option>').join('')+'</select><input type="date" id="bfDate" value="'+b.publishDate+'"></div><input type="text" id="bfImage" placeholder="Featured Image URL" value="'+esc(b.featuredImage||'')+'"><div id="dropZone" onclick="document.getElementById('fileInput').click()" style="margin-top:6px;border:2px dashed #cbd5e1;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:#f8fafc"><i data-lucide="upload" class="lu" style="width:28px;height:28px;color:#94a3b8;display:block;margin:0 auto 6px"></i><span style="font-size:13px;color:#64748b;font-weight:600">Drag & drop an image here, or click to upload</span><span style="display:block;font-size:11px;color:#94a3b8;margin-top:4px">PNG, JPG, WEBP up to 10MB</span><input type="file" id="fileInput" accept="image/*" onchange="uploadBlogImage(this)" style="display:none"></div><div id="previewWrap" style="margin-top:8px;position:relative;border-radius:8px;overflow:hidden;cursor:pointer"><img id="imgPreview" src="'+(b.featuredImage||'')+'" style="max-width:100%;max-height:160px;border-radius:8px;border:1px solid #e2e8f0;display:'+(b.featuredImage?'block':'none')+'"><div id="previewOverlay" style="display:none;position:absolute;inset:0;background:rgba(99,102,241,.15);border:2px dashed #6366f1;border-radius:8px;pointer-events:none"></div></div><input type="text" id="bfImageAlt" placeholder="Image Alt Text" value="'+esc(b.imageAlt||'')+'"><textarea id="bfShortDesc" placeholder="Short Description (50+ chars)" style="height:60px">'+esc(b.shortDescription||'')+'</textarea><textarea id="bfContent" placeholder="Content (HTML)">'+esc(b.content||'')+'</textarea><div class="grid-2"><input type="text" id="bfMetaTitle" placeholder="Meta Title" value="'+esc(b.metaTitle||'')+'"><input type="text" id="bfMetaDesc" placeholder="Meta Description" value="'+esc(b.metaDescription||'')+'"></div><input type="text" id="bfCanonical" placeholder="Canonical URL" value="'+esc(b.canonicalUrl||'')+'"><input type="text" id="bfTags" placeholder="Tags (comma separated)" value="'+esc((b.tags||[]).join(', '))+'"><input type="text" id="bfAuthor" placeholder="Author" value="'+esc(b.author||'Admin')+'"><div style="margin:12px 0"><label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px"><input type="checkbox" id="bfPublished" '+(b.published?'checked':'')+'> Published</label></div><div id="blogSEOReport" style="margin:12px 0;padding:12px;background:#f8fafc;border-radius:10px;font-size:12px;display:none"></div><input type="hidden" id="bfFaq" value="'+esc(JSON.stringify(b.faq||[]))+'"><input type="hidden" id="bfRelatedTools" value="'+esc(JSON.stringify(b.relatedTools||[]))+'"><button class="btn-save" onclick="saveBlogForm(\''+b.id+'\')"><i data-lucide="save" class="lu"></i> '+(isEdit?'Update':'Create')+' Blog Post</button>';document.getElementById('blogForm').style.display='block';renderLucideIcons();initDropZone();
   if(isEdit)renderSEOScore(b);
 }
 
@@ -852,6 +851,16 @@ function copyImgPrompt(){
   navigator.clipboard.writeText(box.value).then(function(){
     alert('Image prompt copied to clipboard!');
   }).catch(function(){ box.select(); document.execCommand('copy'); alert('Image prompt copied!'); });
+}
+
+function initDropZone(){
+  ['dropZone','previewWrap'].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    el.addEventListener('dragover',function(e){e.preventDefault();e.dataTransfer.dropEffect='copy';document.getElementById('dropZone')?.classList.add('dz-hover');var o=document.getElementById('previewOverlay');if(o)o.style.display='block'});
+    el.addEventListener('dragenter',function(e){e.preventDefault();document.getElementById('dropZone')?.classList.add('dz-hover');var o=document.getElementById('previewOverlay');if(o)o.style.display='block'});
+    el.addEventListener('dragleave',function(e){e.preventDefault();document.getElementById('dropZone')?.classList.remove('dz-hover');var o=document.getElementById('previewOverlay');if(o)o.style.display='none'});
+    el.addEventListener('drop',function(e){e.preventDefault();document.getElementById('dropZone')?.classList.remove('dz-hover');var o=document.getElementById('previewOverlay');if(o)o.style.display='none';var files=e.dataTransfer&&e.dataTransfer.files;if(files&&files.length>0){var input={files:files};uploadBlogImage(input)}});
+  });
 }
 
 function uploadBlogImage(input){

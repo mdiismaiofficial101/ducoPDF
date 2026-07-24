@@ -461,6 +461,26 @@ export const toolFeatures: Record<string, { icon: string; title: string; descrip
   ],
 };
 
+export const toolGuides: Record<string, { title: string; steps: { icon: string; title: string; description: string }[] }> = {
+  'pdf-to-word': {
+    title: 'How to Convert PDF to Word (Step-by-Step)',
+    steps: [
+      { icon: '1', title: 'Upload Your PDF', description: 'Click the upload area above or drag and drop your PDF file directly onto the page. DocuPDF accepts files of any size — there are no document limits.' },
+      { icon: '2', title: 'Wait for Processing', description: 'The conversion happens automatically in your browser using client-side technology. Your PDF is analyzed page by page — text, tables, images, and formatting are all extracted.' },
+      { icon: '3', title: 'Review & Download', description: 'Once conversion completes, your editable DOCX file is ready for download. Click the download button to save the converted Word document to your device.' },
+      { icon: '4', title: 'Open in Any Word Processor', description: 'The output DOCX file works in Microsoft Word, Google Docs, LibreOffice, or any compatible word processor. All fonts, colors, tables, and images are preserved from your original PDF.' },
+    ],
+  },
+  'word-to-pdf': {
+    title: 'How to Convert Word to PDF (Step-by-Step)',
+    steps: [
+      { icon: '1', title: 'Upload Your Document', description: 'Select your DOC or DOCX file using the upload area, or drag and drop it onto the page. DocuPDF supports all Word versions including .doc and .docx formats.' },
+      { icon: '2', title: 'Instant Conversion', description: 'The tool processes your Word document entirely in your browser. Fonts, images, tables, and page layouts are carefully converted to the PDF format.' },
+      { icon: '3', title: 'Download Your PDF', description: 'Your PDF is ready instantly. Click download to save your file — all formatting, images, and text remain exactly as they appeared in the original Word document.' },
+    ],
+  },
+};
+
 export const toolRelatedTools: Record<string, string[]> = {
   merge: ['split', 'compress', 'organize', 'delete-pages'],
   split: ['merge', 'compress', 'organize', 'delete-pages'],
