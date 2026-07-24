@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { getPublishedBlogs, BlogPost, formatDate, calculateReadingTime, ALL_TOOLS, getBlogSchema, getBlogBreadcrumbSchema, getBlogFAQSchema } from '@/lib/blog';
 import JsonLd from '@/components/JsonLd';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import NativeAd from '@/components/NativeAd';
 import { Calendar, Clock, User, Tag, ArrowLeft, ArrowRight, Share2, Check } from 'lucide-react';
 
 export default function BlogPostPage() {
@@ -131,6 +132,8 @@ export default function BlogPostPage() {
         <div className="prose prose-slate max-w-none prose-lg prose-headings:text-slate-900 prose-a:text-[#1A237E] prose-img:rounded-xl prose-img:shadow-md"
           dangerouslySetInnerHTML={{ __html: blog.content }} />
 
+        <NativeAd className="my-8" />
+
         {blog.faq && blog.faq.length > 0 && (
           <section className="mt-12 p-8 bg-white rounded-2xl border border-slate-200">
             <h2 className="text-2xl font-bold text-slate-900 mb-6">Frequently Asked Questions</h2>
@@ -181,7 +184,7 @@ export default function BlogPostPage() {
                   {r.featuredImage ? (
                     <Image src={r.featuredImage} alt={r.imageAlt || r.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, 33vw" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300 text-3xl font-bold">D</div>
+                    <div className="w-full h-full flex items-center justify-center text-3xl font-bold bg-gradient-to-br from-indigo-500 to-indigo-700 text-white">{r.title?.[0] || 'D'}</div>
                   )}
                 </div>
                 <div className="p-4">

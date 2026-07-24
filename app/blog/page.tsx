@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { BlogPost, formatDate, calculateReadingTime, BLOG_CATEGORIES } from '@/lib/blog';
+import NativeAd from '@/components/NativeAd';
 import { Calendar, Clock, ArrowRight, Search } from 'lucide-react';
 
 export default function BlogListPage() {
@@ -50,6 +51,8 @@ export default function BlogListPage() {
         </div>
       </div>
 
+      <NativeAd className="mb-8" />
+
       {filtered.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-slate-500">No blogs found. Check back soon for new articles!</p>
@@ -62,7 +65,7 @@ export default function BlogListPage() {
                 {blog.featuredImage ? (
                   <Image src={blog.featuredImage} alt={blog.imageAlt || blog.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300 text-6xl font-bold bg-gradient-to-br from-indigo-50 to-slate-100">D</div>
+                  <div className="w-full h-full flex items-center justify-center text-6xl font-bold bg-gradient-to-br from-indigo-500 to-indigo-700 text-white">{blog.title?.[0] || 'D'}</div>
                 )}
               </Link>
               <div className="p-6 flex flex-col flex-1">

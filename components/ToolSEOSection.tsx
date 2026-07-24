@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
-import { toolFAQs, toolFeatures, toolRelatedTools } from '@/lib/tool-seo-data';
+import { ChevronDown, ChevronUp, ArrowRight, Calendar } from 'lucide-react';
+import { toolFAQs, toolFeatures, toolRelatedTools, toolGuides } from '@/lib/tool-seo-data';
 
 const ALL_TOOLS: Record<string, { name: string; href: string }> = {
   merge: { name: 'Merge PDF', href: '/merge' },
@@ -89,15 +89,48 @@ function FAQItem({ question, answer, isOpen, onClick }: { question: string; answ
 
 export default function ToolSEOSection({ toolId, toolTitle, toolDescription }: ToolSEOSectionProps) {
   const [openFAQ, setOpenFAQ] = useState<number | null>(0);
+  const [relatedBlogs, setRelatedBlogs] = useState<any[]>([]);
 
   const faqs = toolFAQs[toolId] || [];
   const features = toolFeatures[toolId] || [];
   const relatedIds = toolRelatedTools[toolId] || [];
+  const guide = toolGuides[toolId];
 
-  if (faqs.length === 0 && features.length === 0 && relatedIds.length === 0) return null;
+  useEffect(() => {
+    const tool = ALL_TOOLS[toolId];
+    if (!tool) return;
+    fetch('/api/blogs')
+      .then(r => r.json())
+      .then(d => {
+        const all: any[] = Array.isArray(d.blogs) ? d.blogs : [];
+        const matched = all.filter(b =>
+          b.relatedTools?.some((t: string) => t === tool.name)
+        );
+        setRelatedBlogs(matched.slice(0, 3));
+      })
+      .catch(() => {});
+  }, [toolId]);
+
+  if (faqs.length === 0 && features.length === 0 && relatedIds.length === 0 && !guide && relatedBlogs.length === 0) return null;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
+
+      {guide && (
+        <section>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">{guide.title}</h2>
+          <p className="text-slate-600 mb-8">Follow these simple steps to get your document ready in seconds. No technical skills required.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {guide.steps.map((step, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all duration-200">
+                <div className="w-10 h-10 bg-indigo-50 text-[#1A237E] rounded-lg flex items-center justify-center mb-3 text-lg font-bold">{step.icon}</div>
+                <h3 className="font-semibold text-slate-900 mb-1">{step.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {features.length > 0 && (
         <section>
@@ -158,6 +191,31 @@ export default function ToolSEOSection({ toolId, toolTitle, toolDescription }: T
                 </Link>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {relatedBlogs.length > 0 && (
+        <section>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Related Articles</h2>
+          <p className="text-slate-600 mb-8">
+            Learn more about PDF tools and tips from our blog.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {relatedBlogs.map((b: any) => (
+              <Link key={b.id} href={`/blog/${b.slug}`} className="group bg-white rounded-xl border border-slate-200 p-5 hover:shadow-lg hover:border-indigo-200 transition-all">
+                <span className="text-xs text-indigo-600 font-semibold">{b.category}</span>
+                <h3 className="text-base font-bold text-slate-900 mt-1 group-hover:text-[#1A237E] transition">{b.title}</h3>
+                {b.shortDescription && (
+                  <p className="text-sm text-slate-600 mt-2 line-clamp-2">{b.shortDescription}</p>
+                )}
+                {b.publishDate && (
+                  <p className="text-xs text-slate-400 mt-3 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> {new Date(b.publishDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </p>
+                )}
+              </Link>
+            ))}
           </div>
         </section>
       )}

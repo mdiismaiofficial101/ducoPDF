@@ -41,7 +41,7 @@ export default function AuthorPage() {
                 {blog.featuredImage ? (
                   <Image src={blog.featuredImage} alt={blog.imageAlt || blog.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, 50vw" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300 text-4xl font-bold">D</div>
+                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold bg-gradient-to-br from-indigo-500 to-indigo-700 text-white">{blog.title?.[0] || 'D'}</div>
                 )}
               </Link>
               <div className="p-5">
