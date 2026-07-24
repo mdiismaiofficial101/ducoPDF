@@ -127,9 +127,9 @@ export default function SignupPage() {
               <span>Complimentary Pro Workspace gifted today!</span>
             </motion.div>
             
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Create your account
-            </h2>
+            </h1>
             <p className="mt-2 text-sm text-slate-500">
               Already have an account?{' '}
               <Link href="/login" className="font-semibold text-[#FF6F00] hover:text-amber-600 transition">

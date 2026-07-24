@@ -108,9 +108,9 @@ export default function LoginPage() {
               <span>DocuPDF Accounts Suite</span>
             </motion.div>
             
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Welcome back
-            </h2>
+            </h1>
             <p className="mt-2 text-sm text-slate-500">
               Or{' '}
               <Link href="/signup" className="font-semibold text-[#FF6F00] hover:text-amber-600 transition">

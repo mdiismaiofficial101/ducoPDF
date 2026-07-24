@@ -66,7 +66,7 @@ export default function Footer() {
 
       {/* Main Content Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           
           {/* Column 1: Brand & SEO Description */}
           <div className="flex flex-col space-y-4" id="footer-column-brand">
@@ -110,47 +110,52 @@ export default function Footer() {
             <nav aria-label="PDF Tools Navigation">
               <ul className="space-y-3.5 text-sm">
                 <li>
-                  <Link 
-                    href="/merge" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300"
-                    title="Merge multiple PDF files into one single document"
-                  >
+                  <Link href="/merge" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Merge multiple PDF files into one single document">
                     Merge PDF Documents
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/split" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300"
-                    title="Split PDF files into individual selected pages"
-                  >
+                  <Link href="/split" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Split PDF files into individual selected pages">
                     Split PDF Files
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/rotate" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300"
-                    title="Rotate orientation of PDF pages"
-                  >
+                  <Link href="/compress" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Reduce PDF file size without losing quality">
+                    Compress PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/rotate" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Rotate orientation of PDF pages">
                     Rotate PDF Pages
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/delete-pages" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300"
-                    title="Remove selected pages from PDF document"
-                  >
+                  <Link href="/delete-pages" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Remove selected pages from PDF document">
                     Delete PDF Pages
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/summarizer" 
-                    className="text-slate-400 hover:text-teal-300 hover:translate-x-1.5 transition-all duration-300 inline-flex items-center font-medium focus:outline-none"
-                    title="Summarize document content using Gemini Intelligence"
-                  >
+                  <Link href="/organize" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Rearrange and organize PDF pages">
+                    Organize PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/crop" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Trim PDF margins and resize pages">
+                    Crop PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/page-numbers" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Add page numbers to PDF">
+                    Add Page Numbers
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/compare" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center focus:outline-none focus:text-teal-300" title="Compare two PDF documents side by side">
+                    Compare PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/summarizer" className="text-slate-400 hover:text-teal-300 hover:translate-x-1.5 transition-all duration-300 inline-flex items-center font-medium focus:outline-none" title="Summarize document content using AI">
                     <span className="bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded text-[10px] mr-2 font-bold tracking-wider border border-indigo-500/30 uppercase">AI</span>
                     PDF Summarizer
                   </Link>
@@ -163,113 +168,158 @@ export default function Footer() {
           <div className="flex flex-col" id="footer-column-platform">
             <h2 className="text-white font-semibold uppercase tracking-wider text-xs mb-5 flex items-center space-x-2">
               <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
-              <span>Platform & Trust</span>
+              <span>Convert & Edit</span>
             </h2>
-            <nav aria-label="Company Info and Legal Navigation">
+            <nav aria-label="Convert and Edit Tools Navigation">
               <ul className="space-y-3.5 text-sm">
                 <li>
-                  <Link 
-                    href="/dashboard" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300"
-                  >
-                    User Dashboard
+                  <Link href="/pdf-to-word" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Convert PDF to editable Word document">
+                    PDF to Word
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/login" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300"
-                  >
-                    Sign In
+                  <Link href="/word-to-pdf" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Convert Word document to PDF">
+                    Word to PDF
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/signup" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300"
-                  >
-                    Create Account
+                  <Link href="/pdf-to-jpg" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Convert PDF pages to JPG images">
+                    PDF to JPG
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/privacy" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300"
-                  >
-                    Privacy Policy
+                  <Link href="/jpg-to-pdf" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Convert JPG images to PDF">
+                    JPG to PDF
                   </Link>
                 </li>
                 <li>
-                  <Link 
-                    href="/terms" 
-                    className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300"
-                  >
-                    Terms of Service
+                  <Link href="/pdf-to-excel" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Extract tables from PDF to Excel">
+                    PDF to Excel
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/watermark" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Add watermark to PDF documents">
+                    Watermark PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/protect" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Password protect your PDF files">
+                    Protect PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/unlock" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Remove password from protected PDF">
+                    Unlock PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/ocr" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Make scanned PDFs searchable with OCR">
+                    PDF OCR
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/esignature" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Add electronic signature to PDF">
+                    eSign PDF
                   </Link>
                 </li>
               </ul>
             </nav>
           </div>
 
-          {/* Column 4: Contact Support & Social */}
-          <div className="flex flex-col space-y-4" id="footer-column-newsletter">
+          {/* Column 4: More Tools & Resources */}
+          <div className="flex flex-col" id="footer-column-more">
+            <h2 className="text-white font-semibold uppercase tracking-wider text-xs mb-5 flex items-center space-x-2">
+              <span className="w-1.5 h-1.5 bg-fuchsia-400 rounded-full" />
+              <span>More Tools</span>
+            </h2>
+            <nav aria-label="More Tools and Resources Navigation">
+              <ul className="space-y-3.5 text-sm">
+                <li>
+                  <Link href="/redact" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Remove sensitive info from PDF">
+                    Redact PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/repair" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Fix corrupted or damaged PDF files">
+                    Repair PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pdf-forms" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Fill and create PDF forms">
+                    PDF Forms
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/translate" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Translate PDF to any language">
+                    Translate PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/scan-to-pdf" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Scan documents to PDF with your phone">
+                    Scan to PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/password-check" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Check PDF password strength">
+                    Password Check
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/resume-builder" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Build professional resumes online">
+                    Resume Builder
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/templates" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Browse free PDF templates">
+                    Templates
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blog" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="PDF tips, tutorials and guides">
+                    Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/community" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Ask questions and get help">
+                    Community
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+          </div>
+
+          {/* Column 5: Contact Support & Legal */}
+          <div className="flex flex-col space-y-4" id="footer-column-contact">
             <h2 className="text-white font-semibold uppercase tracking-wider text-xs flex items-center space-x-2">
               <span className="w-1.5 h-1.5 bg-fuchsia-400 rounded-full" />
-              <span>Contact Support</span>
+              <span>Support & Legal</span>
             </h2>
-            <p className="text-sm text-slate-400 leading-relaxed font-sans">
-              Need help? Click the button below to email our support team directly.
-            </p>
-
-            {/* Permanent Support Email Box */}
-            <div className="space-y-2">
-              <div className="relative rounded-xl overflow-hidden bg-white/5 border border-white/10 transition-all duration-300">
-                <label htmlFor="support-email" className="sr-only">Support Email</label>
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  id="support-email"
-                  type="email"
-                  readOnly
-                  value="cybrotechnology1@gmail.com"
-                  tabIndex={-1}
-                  className="block w-full pl-10 pr-3 py-2.5 text-sm bg-transparent text-slate-300 focus:outline-none border-none outline-none cursor-default select-all"
-                  aria-label="Support email address"
-                />
-              </div>
-              <a
-                href="mailto:cybrotechnology1@gmail.com"
-                className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white transition-all duration-300"
-                aria-label="Send email to support"
-              >
-                <Send className="w-4 h-4" />
-                <span>Send us an email</span>
-              </a>
-            </div>
-
-            {/* Social Network Links - Touch targets of min 44x44px */}
-            <div className="pt-2" id="footer-social-wrapper">
-              <span className="text-[11px] text-slate-500 uppercase font-semibold tracking-wider block mb-2.5">Connect With Us</span>
-              <div className="flex items-center space-x-2">
-                <a 
-                  href="https://t.me/cybrotechnology" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="h-11 px-3 flex items-center justify-center space-x-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  aria-label="DocuPDF Telegram Channel"
-                >
-                  <Send className="w-5 h-5" />
-                </a>
-                <div 
-                  className="h-11 px-3 flex items-center justify-center space-x-2 text-slate-500 bg-white/5 border border-white/5 rounded-xl cursor-not-allowed group relative"
-                  aria-label="DocuPDF Twitter Account (Coming Soon)"
-                >
-                  <Twitter className="w-5 h-5 opacity-50 group-hover:opacity-100 transition-opacity" />
-                  <span className="text-xs font-medium uppercase tracking-wider opacity-70 group-hover:opacity-100 transition-opacity whitespace-nowrap">Coming Soon</span>
-                </div>
-              </div>
-            </div>
+            <nav aria-label="Support and Legal Links">
+              <ul className="space-y-3.5 text-sm">
+                <li>
+                  <Link href="/privacy" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <a href="mailto:cybrotechnology1@gmail.com" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center gap-2 focus:outline-none focus:text-teal-300">
+                    <Mail className="w-4 h-4" />
+                    <span>Email Support</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="https://t.me/cybrotechnology" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-flex items-center gap-2 focus:outline-none focus:text-teal-300">
+                    <Send className="w-4 h-4" />
+                    <span>Telegram</span>
+                  </a>
+                </li>
+              </ul>
+            </nav>
           </div>
 
         </div>
