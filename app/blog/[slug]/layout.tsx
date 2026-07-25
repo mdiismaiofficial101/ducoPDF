@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import JsonLd from '@/components/JsonLd';
-import { generateBreadcrumbSchema } from '@/lib/seo';
 
 const BLOG_API_URL = 'https://img.cybronetwork.online/blogs-api.php';
 
@@ -61,32 +59,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function BlogPostLayout({ children, params }: { children: React.ReactNode; params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const blog = await getBlogBySlug(slug);
-
-  return (
-    <>
-      <JsonLd data={generateBreadcrumbSchema([
-        { name: 'Home', url: '/' },
-        { name: 'Blog', url: '/blog' },
-        { name: blog?.title || 'Blog Post', url: `/blog/${slug}` },
-      ])} />
-      {blog?.faq && blog.faq.length > 0 && (
-        <JsonLd data={{
-          '@context': 'https://schema.org',
-          '@type': 'FAQPage',
-          mainEntity: blog.faq.map((faq: { question: string; answer: string }) => ({
-            '@type': 'Question',
-            name: faq.question,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: faq.answer,
-            },
-          })),
-        }} />
-      )}
-      {children}
-    </>
-  );
+export default async function BlogPostLayout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }
