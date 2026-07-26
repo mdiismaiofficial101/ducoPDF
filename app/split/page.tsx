@@ -48,7 +48,7 @@ export default function SplitPDFPage() {
       
       try {
         const arrayBuffer = await selected.arrayBuffer();
-        const pdf = await PDFDocument.load(arrayBuffer);
+        const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         const count = pdf.getPageCount();
         setPageCount(count);
       } catch (err) {
@@ -103,7 +103,7 @@ export default function SplitPDFPage() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const originalPdf = await PDFDocument.load(arrayBuffer);
+      const originalPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
       const newPdf = await PDFDocument.create();
 
       const sortedIndices = Array.from(selectedPages).sort((a, b) => a - b);

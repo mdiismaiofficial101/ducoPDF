@@ -157,7 +157,7 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
     const readPdfData = async () => {
       try {
         const buffer = await files[0].arrayBuffer();
-        const pdf = await PDFDocument.load(buffer);
+        const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         const count = pdf.getPageCount();
         setNumPages(count);
         if (toolId === 'organize') {
@@ -365,7 +365,7 @@ p{margin:0;padding:0;}
         else { const decrypted = new Uint8Array(await decryptPDF(buffer, password)); resultBlob = new Blob([decrypted], { type: 'application/pdf' }); outName = `unlocked_${files[0].name}`; }
       }
       else if (toolId === 'organize') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer); const newPdf = await PDFDocument.create();
+        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true }); const newPdf = await PDFDocument.create();
         const activeIndices = pagesList.filter(p => p.selected).map(p => p.pageIndex);
         if (activeIndices.length === 0) throw new Error("Must select at least one page to compile.");
         const copiedPages = await newPdf.copyPages(pdf, activeIndices);
@@ -373,7 +373,7 @@ p{margin:0;padding:0;}
         const bytes = await newPdf.save(); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `organized_${files[0].name}`;
       }
       else if (toolId === 'page-numbers') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
+        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         const pages = pdf.getPages(); const pageNumFont = await pdf.embedFont(StandardFonts.Helvetica);
         pages.forEach((page, index) => {
           const { width, height } = page.getSize(); const text = `${index + 1}`;
@@ -413,7 +413,7 @@ p{margin:0;padding:0;}
         resultBlob = doc.output('blob'); outName = `${files[0].name.split('.')[0]}_presentation.pdf`;
       }
       else if (toolId === 'watermark') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
+        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         let wmFont = await pdf.embedFont(StandardFonts.Helvetica);
         if (needsUnicodeFont(wmText)) {
           wmFont = await getUnicodeFontForPdfLib(wmText, pdf);
@@ -433,7 +433,7 @@ p{margin:0;padding:0;}
         const bytes = await pdf.save({ useObjectStreams: false }); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `repaired_${files[0].name}`;
       }
       else if (toolId === 'crop') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
+        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         pdf.getPages().forEach((page) => {
           const { width, height } = page.getSize();
           page.setCropBox(cropMargins.left, cropMargins.bottom, width - cropMargins.right, height - cropMargins.top);
@@ -445,7 +445,7 @@ p{margin:0;padding:0;}
         setOcrTextResult(ocrText); resultBlob = new Blob([ocrText], { type: 'text/plain' }); outName = `extracted_ocr_${files[0].name.replace('.pdf', '')}.txt`;
       }
       else if (toolId === 'pdf-to-pdfa') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
+        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         pdf.setProducer('DocuPDF PDF/A-1b Generator'); pdf.setCreator('DocuPDF - ISO 19005 Compliant Engine');
         pdf.setTitle(files[0].name.replace('.pdf', '') + ' (PDF/A)');
         const bytes = await pdf.save({ useObjectStreams: true }); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `pdfa_${files[0].name}`;
@@ -463,7 +463,7 @@ p{margin:0;padding:0;}
         } finally { document.body.removeChild(container); }
       }
       else if (toolId === 'redact') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
+        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         pdf.getPages().forEach((page) => {
           const { width, height } = page.getSize();
           page.drawRectangle({ x: 50, y: height - 120, width: width - 100, height: 40, color: rgb(0, 0, 0) });
@@ -489,13 +489,23 @@ p{margin:0;padding:0;}
         if (formMode === 'create' && newFormFields.length > 0) {
           const r = await createPdfForm(files[0] || null, newFormFields); resultBlob = r.blob; outName = r.name;
         } else if (formMode === 'fill' && files.length > 0) {
-          const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer); const form = pdf.getForm();
+          const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true }); const form = pdf.getForm();
           formFieldsList.forEach(f => { try { (form.getField(f.name) as any).setText(f.value); } catch {} });
           const bytes = await pdf.save(); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `filled_${files[0].name}`;
         } else { throw new Error(formMode === 'create' ? 'Add at least one field first.' : 'Upload a PDF with form fields.'); }
       }
       else if (toolId === 'translate') {
-        const res = await fetch('/api/gemini/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'translate', text: 'High-Fidelity Document layout content.', targetLanguage: targetLang }) });
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+        const buffer = await files[0].arrayBuffer();
+        const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const tc = await page.getTextContent();
+          fullText += tc.items.map((item: any) => item.str).join(' ') + '\n';
+        }
+        const res = await fetch('/api/gemini/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'translate', text: fullText.substring(0, 30000), targetLanguage: targetLang }) });
         const data = await res.json(); const translatedText = data.result || '(Translated text)';
         const doc = new jsPDF(); doc.setFontSize(16);
 
@@ -541,7 +551,7 @@ p{margin:0;padding:0;}
         resultBlob = r.blob; outName = r.name;
       }
       else if (toolId === 'esignature') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer);
+        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         if (signatureImage) {
           const page = pdf.getPage(Math.min(sigPage - 1, pdf.getPageCount() - 1));
           const sigRaw = signatureImage.split(',')[1]; const sigBuffer = Uint8Array.from(atob(sigRaw), c => c.charCodeAt(0)).buffer;
@@ -684,6 +694,77 @@ p{margin:0;padding:0;}
                     </div>
                   )}
                 </div>
+              ) : toolId === 'esignature' ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                  <div className="mb-6 space-y-4">
+                    <h3 className="font-bold text-slate-800 text-sm">Draw Your Signature</h3>
+                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                      <canvas ref={canvasRef} width={500} height={200} className="w-full touch-none" onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={() => setIsDrawing(false)} onMouseLeave={() => setIsDrawing(false)} style={{background:'#fff'}} />
+                    </div>
+                    <div className="flex space-x-2">
+                      <button onClick={clearCanvas} className="text-xs px-3 py-1.5 bg-slate-100 rounded-lg text-slate-600 font-bold cursor-pointer">Clear</button>
+                      <button onClick={saveSignature} className="text-xs px-3 py-1.5 bg-[#1A237E] text-white rounded-lg font-bold cursor-pointer">Save Signature</button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><label className="text-xs text-slate-500">Page</label><input type="number" value={sigPage} onChange={(e) => setSigPage(Number(e.target.value))} min={1} className="w-full p-2 border rounded-lg text-xs" /></div>
+                      <div><label className="text-xs text-slate-500">X</label><input type="number" value={sigCoords.x} onChange={(e) => setSigCoords(p => ({...p, x: Number(e.target.value)}))} className="w-full p-2 border rounded-lg text-xs" /></div>
+                      <div><label className="text-xs text-slate-500">Y</label><input type="number" value={sigCoords.y} onChange={(e) => setSigCoords(p => ({...p, y: Number(e.target.value)}))} className="w-full p-2 border rounded-lg text-xs" /></div>
+                    </div>
+                  </div>
+                  {files.length === 0 ? (
+                    <div {...getRootProps()} className={`border-4 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-colors ${isDragActive ? 'border-[#FF6F00] bg-amber-50/50' : 'border-slate-200 hover:border-[#1A237E] hover:bg-slate-50/50'}`}>
+                      <input {...getInputProps()} />
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <div className="bg-[#1A237E] p-4 rounded-2xl text-white shadow-sm"><IconComponent className="w-10 h-10" /></div>
+                        <div>
+                          <p className="text-lg font-bold text-slate-700">{isDragActive ? "Drop here" : "Select Document File"}</p>
+                          <p className="text-slate-400 text-xs mt-1.5">Drag & drop the PDF you want to sign</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-bold text-slate-800">Source Document</h4>
+                        <button onClick={handleReset} className="text-xs text-red-500 hover:underline flex items-center space-x-1 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /><span>Remove</span></button>
+                      </div>
+                      <div className="flex items-center space-x-4 p-4 border border-slate-200 bg-slate-50 rounded-2xl">
+                        <div className="p-3 bg-indigo-50 text-[#1A237E] rounded-xl"><FileText className="w-8 h-8" /></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-slate-900 text-sm truncate">{files[0].name}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{(files[0].size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+
+                      {toolId === 'organize' && pagesList.length > 0 && (
+                        <div className="mt-6">
+                          <h4 className="font-bold text-slate-800 text-sm mb-3">Reorganize Pages</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            {pagesList.map((p, idx) => (
+                              <div key={p.id} draggable onDragStart={(e) => { e.dataTransfer.setData('text/plain', idx.toString()); setDraggedIndex(idx); }} onDragOver={(e) => e.preventDefault()} onDragEnd={() => setDraggedIndex(null)} onDrop={(e) => { e.preventDefault(); const fromIdx = draggedIndex !== null ? draggedIndex : parseInt(e.dataTransfer.getData('text/plain'), 10); if (!isNaN(fromIdx) && fromIdx !== idx) handleReorder(fromIdx, idx); setDraggedIndex(null); }} onClick={() => { const list = [...pagesList]; list[idx].selected = !list[idx].selected; setPagesList(list); }} className={`relative border rounded-xl p-3 cursor-grab text-center transition-all select-none ${p.selected ? 'border-[#1A237E] bg-indigo-50/20 ring-2 ring-indigo-500/20' : 'border-slate-200'} ${draggedIndex === idx ? 'opacity-40' : ''}`}>
+                                <input type="checkbox" checked={p.selected} onChange={() => {}} className="absolute top-2 left-2 w-4 h-4 cursor-pointer" />
+                                <GripVertical className="w-4 h-4 text-slate-300 mx-auto mb-2" />
+                                <span className="text-xs font-bold text-slate-600">Page {idx + 1}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {toolId === 'pdf-forms' && formMode === 'fill' && formFieldsList.length > 0 && (
+                        <div className="mt-6 space-y-3">
+                          <h4 className="font-bold text-slate-800 text-sm">Form Fields</h4>
+                          {formFieldsList.map((f, idx) => (
+                            <div key={idx} className="flex items-center space-x-3">
+                              <label className="text-xs font-medium text-slate-600 w-24 truncate">{f.name}</label>
+                              <input type="text" value={f.value} onChange={(e) => { const list = [...formFieldsList]; list[idx].value = e.target.value; setFormFieldsList(list); }} className="flex-1 p-2 border border-slate-200 rounded-lg text-xs" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                   {files.length === 0 ? (
@@ -722,23 +803,6 @@ p{margin:0;padding:0;}
                                 <span className="text-xs font-bold text-slate-600">Page {idx + 1}</span>
                               </div>
                             ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {toolId === 'esignature' && (
-                        <div className="mt-6 space-y-4">
-                          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                            <canvas ref={canvasRef} width={500} height={200} className="w-full touch-none" onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={() => setIsDrawing(false)} onMouseLeave={() => setIsDrawing(false)} style={{background:'#fff'}} />
-                          </div>
-                          <div className="flex space-x-2">
-                            <button onClick={clearCanvas} className="text-xs px-3 py-1.5 bg-slate-100 rounded-lg text-slate-600 font-bold cursor-pointer">Clear</button>
-                            <button onClick={saveSignature} className="text-xs px-3 py-1.5 bg-[#1A237E] text-white rounded-lg font-bold cursor-pointer">Save Signature</button>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div><label className="text-xs text-slate-500">Page</label><input type="number" value={sigPage} onChange={(e) => setSigPage(Number(e.target.value))} min={1} className="w-full p-2 border rounded-lg text-xs" /></div>
-                            <div><label className="text-xs text-slate-500">X</label><input type="number" value={sigCoords.x} onChange={(e) => setSigCoords(p => ({...p, x: Number(e.target.value)}))} className="w-full p-2 border rounded-lg text-xs" /></div>
-                            <div><label className="text-xs text-slate-500">Y</label><input type="number" value={sigCoords.y} onChange={(e) => setSigCoords(p => ({...p, y: Number(e.target.value)}))} className="w-full p-2 border rounded-lg text-xs" /></div>
                           </div>
                         </div>
                       )}

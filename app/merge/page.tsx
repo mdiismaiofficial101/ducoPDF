@@ -74,7 +74,7 @@ export default function MergePDFPage() {
 
       for (const file of files) {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await PDFDocument.load(arrayBuffer);
+        const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
         copiedPages.forEach((page) => mergedPdf.addPage(page));
       }
@@ -90,7 +90,8 @@ export default function MergePDFPage() {
       addProcessingHistory('Merge PDFs', `${files.length} files merged.pdf`, sizeStr);
     } catch (error) {
       console.error('Error merging PDFs:', error);
-      alert('An error occurred while merging the PDFs.');
+      const msg = error instanceof Error ? error.message : String(error);
+      alert(`Failed to merge PDFs: ${msg}`);
     } finally {
       setIsProcessing(false);
     }

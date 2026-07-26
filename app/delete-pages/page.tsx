@@ -36,7 +36,7 @@ export default function DeletePagesPage() {
       
       try {
         const arrayBuffer = await selected.arrayBuffer();
-        const pdf = await PDFDocument.load(arrayBuffer);
+        const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         const count = pdf.getPageCount();
         setPageCount(count);
       } catch (err) {
@@ -80,7 +80,7 @@ export default function DeletePagesPage() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await PDFDocument.load(arrayBuffer);
+      const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
       
       // Sort in descending order to avoid shift index mismatches
       const sortedIndicesToRemove = Array.from(discardedPages).sort((a, b) => b - a);

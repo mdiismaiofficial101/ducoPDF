@@ -59,9 +59,9 @@ export default function AISummarizerPage() {
   });
 
   const handleSummarize = async () => {
-    if (!pdfBase64) return;
+    if (!file) return;
     setIsProcessing(true);
-    setStepMessage('Gemini is analyzing document themes...');
+    setStepMessage('Extracting text from PDF...');
 
     const messages = [
       'Gemini is analyzing document themes...',
@@ -77,10 +77,20 @@ export default function AISummarizerPage() {
     }, 2500);
 
     try {
+      const pdfjs = await import('pdfjs-dist');
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        fullText += tc.items.map((item: any) => item.str).join(' ') + '\n';
+      }
       const response = await fetch('/api/gemini/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64, type: summaryType }),
+        body: JSON.stringify({ text: fullText.substring(0, 40000), type: summaryType }),
       });
 
       const data = await response.json();

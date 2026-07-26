@@ -283,7 +283,7 @@ export async function createPdfForm(
 
   if (existingFile) {
     const buffer = await existingFile.arrayBuffer();
-    pdfDoc = await PDFDocument.load(buffer);
+    pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
   } else {
     pdfDoc = await PDFDocument.create();
     pdfDoc.addPage([612, 792]);
@@ -809,7 +809,7 @@ export async function applySmartWatermark(
   config: WatermarkConfig
 ): Promise<{ blob: Blob; name: string }> {
   const buffer = await file.arrayBuffer();
-  const pdfDoc = await PDFDocument.load(buffer);
+  const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
   const fallbackFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const allPages = pdfDoc.getPages();
   const fontSize = config.fontSize || 48;
