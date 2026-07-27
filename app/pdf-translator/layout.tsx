@@ -1,8 +1,9 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { getPageSEO } from '@/lib/seo';
 import JsonLd from '@/components/JsonLd';
 import ToolSEOSection from '@/components/ToolSEOSection';
 import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
+import RatingWidget from '@/components/RatingWidget';
 
 export const metadata: Metadata = getPageSEO('pdf-translator');
 
@@ -18,6 +19,7 @@ export default function ToolLayout({ children }: { children: React.ReactNode }) 
       <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/pdf-translator')} />
       {generateToolFAQ('pdf-translator') && <JsonLd data={generateToolFAQ('pdf-translator')!} />}
       {children}
+      <RatingWidget toolId="pdf-translator" toolName="pdf-translator" />
       <ToolSEOSection toolId="pdf-translator" toolTitle={toolName} toolDescription={typeof seo.description === 'string' ? seo.description : ''} />
     </>
   );

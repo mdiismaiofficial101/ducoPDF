@@ -1,8 +1,9 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { getPageSEO } from '@/lib/seo';
 import JsonLd from '@/components/JsonLd';
 import ToolSEOSection from '@/components/ToolSEOSection';
 import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
+import RatingWidget from '@/components/RatingWidget';
 
 export const metadata: Metadata = getPageSEO('delete-pages');
 
@@ -18,6 +19,7 @@ export default function ToolLayout({ children }: { children: React.ReactNode }) 
       <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/delete-pages')} />
       {generateToolFAQ('delete-pages') && <JsonLd data={generateToolFAQ('delete-pages')!} />}
       {children}
+      <RatingWidget toolId="delete-pages" toolName="delete-pages" />
       <ToolSEOSection toolId="delete-pages" toolTitle={toolName} toolDescription={typeof seo.description === 'string' ? seo.description : ''} />
     </>
   );

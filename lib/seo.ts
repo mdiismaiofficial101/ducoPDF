@@ -297,12 +297,7 @@ export const siteSEO: Record<string, PageSEO> = {
     path: '/templates',
     keywords: ['pdf templates', 'document templates', 'free pdf templates', 'invoice template', 'resume template pdf', 'agreement template'],
   },
-  community: {
-    title: 'Community Q&A',
-    description: 'Ask questions, share knowledge, and get help from the DocuPDF community. Find answers to common PDF issues and share your expertise.',
-    path: '/community',
-    keywords: ['pdf help', 'pdf support', 'pdf community', 'pdf questions answers', 'pdf forum', 'pdf tips'],
-  },
+
   login: {
     title: 'Sign In - DocuPDF Account Login',
     description: 'Sign in to your DocuPDF account to access your dashboard, processing history, and developer API keys. Secure authentication.',

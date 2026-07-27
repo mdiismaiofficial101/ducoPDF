@@ -279,11 +279,7 @@ export default function Footer() {
                     Blog
                   </Link>
                 </li>
-                <li>
-                  <Link href="/community" className="text-slate-400 hover:text-white hover:translate-x-1.5 transition-all duration-300 inline-block focus:outline-none focus:text-teal-300" title="Ask questions and get help">
-                    Community
-                  </Link>
-                </li>
+
               </ul>
             </nav>
           </div>

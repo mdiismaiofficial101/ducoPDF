@@ -1,8 +1,9 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { getPageSEO } from '@/lib/seo';
 import JsonLd from '@/components/JsonLd';
 import ToolSEOSection from '@/components/ToolSEOSection';
 import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateToolFAQ } from '@/lib/seo';
+import RatingWidget from '@/components/RatingWidget';
 
 export const metadata: Metadata = getPageSEO('ppt-to-pdf');
 
@@ -18,6 +19,7 @@ export default function ToolLayout({ children }: { children: React.ReactNode }) 
       <JsonLd data={generateSoftwareApplicationSchema(toolName, typeof seo.description === 'string' ? seo.description : '', '/ppt-to-pdf')} />
       {generateToolFAQ('ppt-to-pdf') && <JsonLd data={generateToolFAQ('ppt-to-pdf')!} />}
       {children}
+      <RatingWidget toolId="ppt-to-pdf" toolName="ppt-to-pdf" />
       <ToolSEOSection toolId="ppt-to-pdf" toolTitle={toolName} toolDescription={typeof seo.description === 'string' ? seo.description : ''} />
     </>
   );

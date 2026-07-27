@@ -72,7 +72,7 @@ const tools = [
   { name: 'Workflows', description: 'Create chains of tools to automate your PDF tasks.', href: '/workflows', color: 'text-indigo-500', bg: 'bg-indigo-50', category: 'Workflows' },
   { name: 'Template Library', description: 'Browse and download professional PDF templates for resumes, invoices, agreements, and more.', href: '/templates', color: 'text-teal-600', bg: 'bg-teal-50', category: 'Workflows' },
   { name: 'Resume Builder', description: 'Create professional resumes and CVs with modern templates and live preview.', href: '/resume-builder', color: 'text-emerald-600', bg: 'bg-emerald-50', category: 'Workflows' },
-  { name: 'Community Q&A', description: 'Ask questions, share knowledge, and get help from the DocuPDF community.', href: '/community', color: 'text-indigo-600', bg: 'bg-indigo-50', category: 'Workflows' },
+
 ];
 
 export default function Home() {

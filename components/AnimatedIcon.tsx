@@ -232,16 +232,7 @@ export default function AnimatedIcon({ name, className = 'w-8 h-8' }: AnimatedIc
     );
   }
 
-  if (keyName === 'community q&a' || keyName === 'community qa') {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <motion.path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" animate={{ y: [0, -1, 0] }} transition={{ duration: 2, repeat: Infinity }} />
-        <motion.circle cx="12" cy="10" r="1.5" className="fill-amber-500 stroke-none" animate={{ scale: [0.9, 1.1, 0.9] }} transition={{ duration: 1.5, repeat: Infinity }} />
-        <motion.path d="M9 13c0-1.5 1-2.5 3-2.5s3 1 3 2.5" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 2, repeat: Infinity }} />
-        <motion.path d="M9 7h6" strokeWidth={3} animate={{ opacity: [0.2, 0.6, 0.2] }} transition={{ duration: 1.5, repeat: Infinity }} />
-      </svg>
-    );
-  }
+
 
   if (keyName === 'word to' || keyName === 'pdf to word') return <FileText className={className} />;
   if (keyName === 'jpg to' || keyName === 'pdf to jpg') return <ImageIcon className={className} />;
