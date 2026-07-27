@@ -1,9 +1,10 @@
 import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
+import firebaseConfig from '@/firebase-applet-config.json';
 
 let db: ReturnType<typeof getFirestore> | null = null;
 if (app) {
-  db = getFirestore(app);
+  db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 }
 
 export interface Rating {

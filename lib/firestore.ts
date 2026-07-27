@@ -1,10 +1,11 @@
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
+import firebaseConfig from '@/firebase-applet-config.json';
 
 let db: ReturnType<typeof getFirestore> | null = null;
 
 if (app) {
-  db = getFirestore(app);
+  db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 }
 
 const OVERRIDES_COLLECTION = 'seo_overrides';
