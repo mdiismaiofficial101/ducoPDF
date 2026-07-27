@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 const NATIVE_CONTAINER_ID = 'container-4dd643ec9282a43f073d3f22a00c125d';
+const NATIVE_AD_KEY = '4dd643ec9282a43f073d3f22a00c125d';
 
 export default function NativeAd({ className = '' }: { className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -12,19 +13,19 @@ export default function NativeAd({ className = '' }: { className?: string }) {
     if (loadedRef.current) return;
     loadedRef.current = true;
 
-    const loadScript = (src: string): Promise<void> =>
-      new Promise((resolve) => {
-        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-        const s = document.createElement('script');
-        s.async = true as any;
-        s.setAttribute('data-cfasync', 'false');
-        s.src = src;
-        s.onload = () => resolve();
-        s.onerror = () => resolve();
-        document.body.appendChild(s);
-      });
+    const injectAd = (container: HTMLDivElement) => {
+      if (!container || container.querySelector('iframe')) return;
+      const inlineScript = document.createElement('script');
+      inlineScript.textContent = `atOptions = { 'key': '${NATIVE_AD_KEY}', 'format': 'iframe', 'height': 250, 'width': 300, 'params': {} };`;
+      container.appendChild(inlineScript);
+      const loader = document.createElement('script');
+      loader.src = `https://pl30483783.effectivecpmnetwork.com/${NATIVE_AD_KEY}/invoke.js`;
+      container.appendChild(loader);
+    };
 
-    loadScript('https://pl30483783.effectivecpmnetwork.com/4dd643ec9282a43f073d3f22a00c125d/invoke.js');
+    if (containerRef.current) {
+      injectAd(containerRef.current);
+    }
   }, []);
 
   return (
