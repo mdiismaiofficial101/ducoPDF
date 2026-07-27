@@ -416,8 +416,8 @@ export function generateWebSiteSchema() {
   };
 }
 
-export function generateSoftwareApplicationSchema(toolName: string, description: string, path: string) {
-  return {
+export function generateSoftwareApplicationSchema(toolName: string, description: string, path: string, aggregateRating?: { ratingValue: number; ratingCount: number }) {
+  const schema: Record<string, any> = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: `${toolName} - ${SITE_NAME}`,
@@ -436,6 +436,18 @@ export function generateSoftwareApplicationSchema(toolName: string, description:
       url: SITE_URL,
     },
   };
+
+  if (aggregateRating && aggregateRating.ratingCount > 0) {
+    schema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: aggregateRating.ratingValue,
+      reviewCount: aggregateRating.ratingCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+
+  return schema;
 }
 
 export function generateBreadcrumbSchema(items: Array<{ name: string; url: string }>) {
