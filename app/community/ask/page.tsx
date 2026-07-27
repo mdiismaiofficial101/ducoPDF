@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Send, HelpCircle } from 'lucide-react';
-import { addQAQuestion, getQACategories, QAQuestion } from '@/lib/pdf-tools';
-import { getLoggedInUser } from '@/lib/auth';
+import { addQAQuestion, getQACategories } from '@/lib/qa-client';
 
 export default function AskQuestionPage() {
   const router = useRouter();
@@ -13,30 +12,29 @@ export default function AskQuestionPage() {
   const [category, setCategory] = useState('General');
   const [tags, setTags] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    getQACategories().then(c => setCategories(c)).catch(() => {});
+  }, []);
+
+  const handleSubmit = async () => {
     if (!title.trim()) { alert('Please enter a question title.'); return; }
     if (!body.trim()) { alert('Please enter the question details.'); return; }
     setSubmitting(true);
 
-    const user = getLoggedInUser();
-    const question: QAQuestion = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      body: body.trim(),
-      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-      category,
-      author: { id: user?.email || 'anon', name: user?.name || 'Anonymous', avatar: '' },
-      votes: 0,
-      answers: [],
-      bestAnswerId: null,
-      createdAt: new Date().toISOString(),
-      viewCount: 0,
-      reports: [],
-    };
-
-    addQAQuestion(question);
-    router.push('/community');
+    try {
+      await addQAQuestion({
+        title: title.trim(),
+        body: body.trim(),
+        tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+        category,
+      });
+      router.push('/community');
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit question.');
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -69,7 +67,7 @@ export default function AskQuestionPage() {
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Category</label>
               <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                {getQACategories().map(c => <option key={c} value={c}>{c}</option>)}
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>

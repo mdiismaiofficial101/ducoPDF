@@ -1,100 +1,101 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronUp, ChevronDown, MessageSquare, CheckCircle2, Flag, Send, Loader2 } from 'lucide-react';
-import { getQAQuestions, addQAAnswer, voteQAQuestion, voteQAAnswer, markBestAnswer, reportQAQuestion, reportQAAnswer, QAQuestion, QAAnswer } from '@/lib/pdf-tools';
-import { getLoggedInUser } from '@/lib/auth';
+import { getQAQuestion, addQAAnswer, voteQAQuestion, voteQAAnswer, markBestAnswer, reportQAQuestion, reportQAAnswer, QAQuestion } from '@/lib/qa-client';
 
 export default function QuestionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [question, setQuestion] = useState<QAQuestion | null>(null);
+  const [loading, setLoading] = useState(true);
   const [answerText, setAnswerText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reported, setReported] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const questions = getQAQuestions();
-    const q = questions.find(q => q.id === params?.id);
-    if (q) {
-      q.viewCount++;
+  const fetchQuestion = useCallback(async () => {
+    setLoading(true);
+    try {
+      const q = await getQAQuestion(params?.id as string);
       setQuestion(q);
-      const questionsCopy = getQAQuestions();
-      const idx = questionsCopy.findIndex(x => x.id === q.id);
-      if (idx !== -1) { questionsCopy[idx].viewCount++; localStorage.setItem('qa_questions', JSON.stringify(questionsCopy)); }
+    } catch {
+      setQuestion(null);
     }
+    setLoading(false);
   }, [params?.id]);
 
-  const refresh = () => {
-    const questions = getQAQuestions();
-    setQuestion(questions.find(q => q.id === params?.id) || null);
-  };
+  useEffect(() => {
+    fetchQuestion();
+  }, [fetchQuestion]);
 
-  const handleVoteQ = (delta: 1 | -1) => {
+  const handleVoteQ = async (delta: 1 | -1) => {
     if (!question) return;
-    voteQAQuestion(question.id, delta);
-    refresh();
+    await voteQAQuestion(question.id, delta);
+    setQuestion(prev => prev ? { ...prev, votes: prev.votes + delta } : prev);
   };
 
-  const handleVoteA = (answerId: string, delta: 1 | -1) => {
+  const handleVoteA = async (answerId: string, delta: 1 | -1) => {
     if (!question) return;
-    voteQAAnswer(question.id, answerId, delta);
-    refresh();
+    await voteQAAnswer(answerId, delta);
+    setQuestion(prev => prev ? {
+      ...prev,
+      answers: prev.answers.map(a => a.id === answerId ? { ...a, votes: a.votes + delta } : a),
+    } : prev);
   };
 
-  const handleBestAnswer = (answerId: string) => {
+  const handleBestAnswer = async (answerId: string) => {
     if (!question) return;
-    markBestAnswer(question.id, answerId);
-    refresh();
+    await markBestAnswer(question.id, answerId);
+    setQuestion(prev => prev ? {
+      ...prev,
+      bestAnswerId: answerId,
+      answers: prev.answers.map(a => ({ ...a, isBestAnswer: a.id === answerId })),
+    } : prev);
   };
 
-  const handleReportQ = () => {
-    if (!question) return;
-    const user = getLoggedInUser();
-    const userId = user?.email || 'anon';
-    if (!reported[`q_${question.id}`]) {
-      reportQAQuestion(question.id, userId);
-      setReported(prev => ({ ...prev, [`q_${question.id}`]: true }));
-      refresh();
-    }
+  const handleReportQ = async () => {
+    if (!question || reported[`q_${question.id}`]) return;
+    await reportQAQuestion(question.id);
+    setReported(prev => ({ ...prev, [`q_${question.id}`]: true }));
   };
 
-  const handleReportA = (answerId: string) => {
-    if (!question) return;
-    const user = getLoggedInUser();
-    const userId = user?.email || 'anon';
-    if (!reported[`a_${answerId}`]) {
-      reportQAAnswer(question.id, answerId, userId);
-      setReported(prev => ({ ...prev, [`a_${answerId}`]: true }));
-      refresh();
-    }
+  const handleReportA = async (answerId: string) => {
+    if (!question || reported[`a_${answerId}`]) return;
+    await reportQAAnswer(answerId);
+    setReported(prev => ({ ...prev, [`a_${answerId}`]: true }));
   };
 
-  const handleSubmitAnswer = () => {
+  const handleSubmitAnswer = async () => {
     if (!question || !answerText.trim()) return;
     setSubmitting(true);
-    const user = getLoggedInUser();
-    const answer: QAAnswer = {
-      id: Date.now().toString(),
-      body: answerText.trim(),
-      author: { id: user?.email || 'anon', name: user?.name || 'Anonymous', avatar: '' },
-      votes: 0,
-      isBestAnswer: false,
-      createdAt: new Date().toISOString(),
-      reports: [],
-    };
-    addQAAnswer(question.id, answer);
-    setAnswerText('');
+    try {
+      const answer = await addQAAnswer(question.id, answerText.trim());
+      if (answer) {
+        setQuestion(prev => prev ? { ...prev, answers: [...prev.answers, answer] } : prev);
+      }
+      setAnswerText('');
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit answer.');
+    }
     setSubmitting(false);
-    refresh();
   };
 
-  if (!question) {
+  if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
         <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mx-auto mb-4" />
         <p className="text-slate-500">Loading question...</p>
+      </div>
+    );
+  }
+
+  if (!question) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <MessageSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+        <h3 className="text-lg font-bold text-slate-700 mb-2">Question not found</h3>
+        <button onClick={() => router.push('/community')} className="text-indigo-600 font-medium cursor-pointer">Back to Community</button>
       </div>
     );
   }
@@ -117,13 +118,13 @@ export default function QuestionDetailPage() {
             <p className="text-slate-700 leading-relaxed mb-4">{question.body}</p>
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="text-[11px] px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full font-medium">{question.category}</span>
-              {question.tags.map(function(t) { return <span key={t} className="text-[11px] px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full">{t}</span>; })}
+              {question.tags.map(t => <span key={t} className="text-[11px] px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full">{t}</span>)}
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Asked by <strong>{question.author.name}</strong> on {new Date(question.createdAt).toLocaleDateString()}</span>
               <div className="flex items-center space-x-3">
                 <span>{question.viewCount} views</span>
-                <button onClick={handleReportQ} className="flex items-center space-x-1 text-red-400 hover:text-red-600 cursor-pointer">
+                <button onClick={handleReportQ} disabled={reported[`q_${question.id}`]} className="flex items-center space-x-1 text-red-400 hover:text-red-600 cursor-pointer disabled:opacity-50">
                   <Flag className="w-3.5 h-3.5" /><span>{reported[`q_${question.id}`] ? 'Reported' : 'Report'}</span>
                 </button>
               </div>
@@ -155,7 +156,7 @@ export default function QuestionDetailPage() {
                     {!a.isBestAnswer && (
                       <button onClick={() => handleBestAnswer(a.id)} className="text-[11px] text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">Mark Best</button>
                     )}
-                    <button onClick={() => handleReportA(a.id)} className="text-[11px] text-red-400 hover:text-red-600 cursor-pointer">{reported[`a_${a.id}`] ? 'Reported' : 'Report'}</button>
+                    <button onClick={() => handleReportA(a.id)} disabled={reported[`a_${a.id}`]} className="text-[11px] text-red-400 hover:text-red-600 cursor-pointer disabled:opacity-50">{reported[`a_${a.id}`] ? 'Reported' : 'Report'}</button>
                   </div>
                 </div>
                 <p className="text-sm text-slate-700 leading-relaxed">{a.body}</p>

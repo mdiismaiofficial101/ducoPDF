@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { Search, HelpCircle, MessageSquare, ThumbsUp, Plus, ArrowLeft, Filter, ChevronUp, ChevronDown } from 'lucide-react';
-import { getQAQuestions, voteQAQuestion, QAQuestion, getQACategories } from '@/lib/pdf-tools';
+import { getQAQuestions, voteQAQuestion, getQACategories, QAQuestion } from '@/lib/qa-client';
 
 export default function CommunityPage() {
   const router = useRouter();
@@ -13,25 +13,37 @@ export default function CommunityPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'newest' | 'votes'>('newest');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setQuestions(getQAQuestions());
+  const fetchQuestions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = await getQAQuestions({ search: search || undefined, category, sort: sortBy });
+      setQuestions(qs);
+    } catch {
+      setQuestions([]);
+    }
+    setLoading(false);
+  }, [search, category, sortBy]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      setCategories(await getQACategories());
+    } catch {}
   }, []);
 
-  const refresh = () => setQuestions(getQAQuestions());
+  useEffect(() => {
+    fetchQuestions();
+  }, [fetchQuestions]);
 
-  const filtered = questions.filter(q => {
-    const matchSearch = !search || q.title.toLowerCase().includes(search.toLowerCase()) || q.body.toLowerCase().includes(search.toLowerCase()) || q.tags.some(t => t.toLowerCase().includes(search.toLowerCase()));
-    const matchCategory = category === 'all' || q.category === category;
-    return matchSearch && matchCategory;
-  }).sort((a, b) => {
-    if (sortBy === 'votes') return b.votes - a.votes;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
-  const handleVote = (id: string, delta: 1 | -1) => {
-    voteQAQuestion(id, delta);
-    refresh();
+  const handleVote = async (id: string, delta: 1 | -1) => {
+    await voteQAQuestion(id, delta);
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes + delta } : q));
   };
 
   return (
@@ -56,7 +68,7 @@ export default function CommunityPage() {
         </div>
         <select value={category} onChange={e => setCategory(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
           <option value="all">All Categories</option>
-          {getQACategories().map(c => <option key={c} value={c}>{c}</option>)}
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <div className="flex bg-slate-100 rounded-xl p-1">
           <button onClick={() => setSortBy('newest')} className={`px-3 py-1.5 text-xs font-bold rounded-lg cursor-pointer ${sortBy === 'newest' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Newest</button>
@@ -65,30 +77,37 @@ export default function CommunityPage() {
       </div>
 
       <div className="space-y-4">
-        {filtered.map((q, idx) => (
-          <motion.div key={q.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
-            className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md hover:border-indigo-200 transition-all"
-          >
-            <div className="flex items-start space-x-4">
-              <div className="flex flex-col items-center space-y-1 min-w-[48px]">
-                <button onClick={() => handleVote(q.id, 1)} className="p-1 rounded hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 cursor-pointer"><ChevronUp className="w-5 h-5" /></button>
-                <span className={`font-bold text-sm ${q.votes > 0 ? 'text-emerald-600' : q.votes < 0 ? 'text-red-500' : 'text-slate-500'}`}>{q.votes}</span>
-                <button onClick={() => handleVote(q.id, -1)} className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 cursor-pointer"><ChevronDown className="w-5 h-5" /></button>
-              </div>
-              <div className="flex-1 min-w-0">
-                <Link href={`/community/question/${q.id}`} className="text-lg font-bold text-slate-900 hover:text-[#1A237E] transition line-clamp-1">{q.title}</Link>
-                <p className="text-sm text-slate-500 mt-1 line-clamp-2">{q.body}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">{q.category}</span>
-                  {q.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{t}</span>)}
-                  <span className="text-[10px] text-slate-400 ml-auto">{q.answers.length} answers</span>
-                  <span className="text-[10px] text-slate-400">{q.viewCount} views</span>
+        {loading ? (
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
+            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-slate-500 text-sm">Loading questions...</p>
+          </div>
+        ) : (
+          questions.map((q, idx) => (
+            <motion.div key={q.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
+              className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md hover:border-indigo-200 transition-all"
+            >
+              <div className="flex items-start space-x-4">
+                <div className="flex flex-col items-center space-y-1 min-w-[48px]">
+                  <button onClick={() => handleVote(q.id, 1)} className="p-1 rounded hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 cursor-pointer"><ChevronUp className="w-5 h-5" /></button>
+                  <span className={`font-bold text-sm ${q.votes > 0 ? 'text-emerald-600' : q.votes < 0 ? 'text-red-500' : 'text-slate-500'}`}>{q.votes}</span>
+                  <button onClick={() => handleVote(q.id, -1)} className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 cursor-pointer"><ChevronDown className="w-5 h-5" /></button>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Link href={`/community/question/${q.id}`} className="text-lg font-bold text-slate-900 hover:text-[#1A237E] transition line-clamp-1">{q.title}</Link>
+                  <p className="text-sm text-slate-500 mt-1 line-clamp-2">{q.body}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-medium">{q.category}</span>
+                    {q.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{t}</span>)}
+                    <span className="text-[10px] text-slate-400 ml-auto">{q.answers.length} answers</span>
+                    <span className="text-[10px] text-slate-400">{q.viewCount} views</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
-        {filtered.length === 0 && (
+            </motion.div>
+          ))
+        )}
+        {!loading && questions.length === 0 && (
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
             <MessageSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-slate-700 mb-2">No questions found</h3>

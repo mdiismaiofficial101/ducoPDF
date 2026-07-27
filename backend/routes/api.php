@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\ImageController;
 use App\Http\Controllers\Api\V1\VideoController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController;
+use App\Http\Controllers\Api\V1\QAController;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Tag;
@@ -41,6 +42,18 @@ Route::prefix('v1')->group(function () {
     Route::get('tags/{tag}', [TagController::class, 'show']);
     Route::get('videos', [VideoController::class, 'index']);
     Route::get('videos/{video}', [VideoController::class, 'show']);
+
+    // Public Q&A routes
+    Route::get('qa/questions', [QAController::class, 'questions']);
+    Route::get('qa/questions/{id}', [QAController::class, 'show']);
+    Route::get('qa/categories', [QAController::class, 'categories']);
+    Route::post('qa/questions', [QAController::class, 'store']);
+    Route::post('qa/questions/{id}/answers', [QAController::class, 'storeAnswer']);
+    Route::post('qa/questions/{id}/vote', [QAController::class, 'voteQuestion']);
+    Route::post('qa/answers/{id}/vote', [QAController::class, 'voteAnswer']);
+    Route::post('qa/questions/{questionId}/best-answer/{answerId}', [QAController::class, 'markBestAnswer']);
+    Route::post('qa/questions/{id}/report', [QAController::class, 'reportQuestion']);
+    Route::post('qa/answers/{id}/report', [QAController::class, 'reportAnswer']);
 
     // Auth routes
     Route::post('auth/register', [AuthController::class, 'register']);
