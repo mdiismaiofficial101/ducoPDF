@@ -40,29 +40,8 @@ export default function TrustStatsBar() {
         <div className="absolute bottom-0 right-1/3 translate-y-1/2 w-64 h-64 bg-teal-500/10 rounded-full blur-[80px] pointer-events-none" />
 
         <div className="max-w-7xl w-full mx-auto relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 md:gap-8 items-center justify-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 items-center justify-center">
             
-            {/* Trust Signal 1: Users */}
-            <div 
-              id="trust-signal-users"
-              className="flex flex-col items-center text-center p-3 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.05] hover:border-white/10 hover:scale-[1.02]"
-            >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center mb-3 text-indigo-400 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </div>
-              <span className="text-lg md:text-xl font-bold bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent tracking-tight">
-                25M+
-              </span>
-              <span className="text-xs font-medium text-slate-400 mt-1 leading-snug">
-                Users Worldwide
-              </span>
-            </div>
-
             {/* Trust Signal 2: Rating */}
             <div 
               id="trust-signal-rating"
