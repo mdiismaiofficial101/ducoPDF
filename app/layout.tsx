@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     default: 'DocuPDF - Free Online PDF Tools | Merge, Split, Compress & Convert PDF',
     template: '%s | DocuPDF',
   },
-  description: 'DocuPDF offers 30+ free online PDF tools. Merge, split, compress, convert, rotate, watermark, protect and edit PDFs instantly in your browser. 100% secure, no uploads.',
+  description: 'Free PDF tools to merge, split, compress, convert, rotate, edit and protect PDFs online. Fast, secure, and no uploads required.',
   keywords: 'pdf tools, online pdf editor, merge pdf, split pdf, compress pdf, free pdf tools, pdf converter, edit pdf online, pdf merger, pdf splitter, pdf compressor, pdf to word, word to pdf',
   authors: [{ name: 'DocuPDF' }],
   creator: 'DocuPDF',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'DocuPDF - Free Online PDF Tools | Merge, Split, Compress & Convert PDF',
-    description: 'DocuPDF offers 30+ free online PDF tools. Merge, split, compress, convert, rotate, watermark, protect and edit PDFs instantly in your browser. 100% secure, no uploads.',
+    description: 'Free PDF tools to merge, split, compress, convert, rotate, edit and protect PDFs online. Fast, secure, and no uploads required.',
     url: 'https://cybronetwork.online',
     siteName: 'DocuPDF',
     locale: 'en_US',
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'DocuPDF - Free Online PDF Tools | Merge, Split, Compress & Convert PDF',
-    description: 'DocuPDF offers 30+ free online PDF tools. Merge, split, compress, convert, rotate, watermark, protect and edit PDFs instantly. 100% secure.',
+    description: 'Free PDF tools to merge, split, compress, convert, rotate, edit and protect PDFs online. Fast, secure, and no uploads required.',
     images: ['https://docupdf.com/myicon.png'],
   },
   robots: {

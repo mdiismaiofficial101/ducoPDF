@@ -3,6 +3,16 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.cybronetwork.online' }],
+        destination: 'https://cybronetwork.online/:path*',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       { source: '/admin', destination: '/admin/index.html' },
