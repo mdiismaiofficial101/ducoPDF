@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'motion/react';
 import AnimatedIcon from '@/components/AnimatedIcon';
 import { formatDate, calculateReadingTime } from '@/lib/blog';
 import { Calendar, Clock, TrendingUp, ArrowRight } from 'lucide-react';
@@ -81,21 +80,17 @@ export default function HomeContent() {
         className="relative w-full h-[420px] sm:h-[500px] lg:h-[600px] bg-sky-50 overflow-hidden flex items-center justify-center text-center px-4 sm:px-6 lg:px-8 border-b border-gray-100"
       >
         <video
-          autoPlay muted loop playsInline
+          autoPlay muted loop playsInline preload="metadata"
           className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none z-0"
         >
           <source src="/hero.mp4" type="video/mp4" />
-          <source src="/hero.mp4.mp4" type="video/mp4" />
         </video>
 
         <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-white to-transparent z-10 pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent z-10 pointer-events-none" />
 
-        <motion.div
-          initial={{ opacity: 0, y: 25 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="relative z-20 max-w-4xl mx-auto flex flex-col items-center justify-center"
+        <div
+          className="relative z-20 max-w-4xl mx-auto flex flex-col items-center justify-center animate-[fadeInUp_0.8s_ease-out]"
         >
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#1A237E] tracking-tight mb-6 drop-shadow-[0_2px_8px_rgba(255,255,255,0.8)]">
             Every tool you need to work with PDFs in one place
@@ -103,7 +98,7 @@ export default function HomeContent() {
           <p className="text-lg md:text-xl text-slate-700 font-medium leading-relaxed max-w-3xl drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]">
             Every tool you need to use PDFs, at your fingertips. All are 100% FREE and easy to use! Merge, split, compress, convert, rotate, unlock and watermark PDFs with just a few clicks.
           </p>
-        </motion.div>
+        </div>
       </section>
 
       <AdBanner className="mb-6" />
@@ -133,14 +128,12 @@ export default function HomeContent() {
               className="group h-full block bg-white border border-gray-200 rounded-xl p-6 hover:shadow-xl hover:border-[#FF6F00] transition-all duration-300"
             >
               <div className="flex items-center space-x-4 mb-4">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.5, rotate: -15 }}
-                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.03, type: 'spring', bounce: 0.4 }}
-                  className={`p-3 rounded-xl ${tool.bg} ${tool.color} group-hover:scale-110 transition-transform duration-300 icn-hw`}
+                <div
+                  style={{ animationDelay: `${index * 0.03}s` }}
+                  className={`p-3 rounded-xl ${tool.bg} ${tool.color} group-hover:scale-110 transition-transform duration-300 icn-hw animate-[scaleIn_0.5s_ease-out_back]`}
                 >
                   <AnimatedIcon name={tool.name} color={tool.color} className="w-8 h-8" aria-hidden="true" />
-                </motion.div>
+                </div>
                 <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#1A237E] transition-colors">
                   {tool.name}
                 </h3>

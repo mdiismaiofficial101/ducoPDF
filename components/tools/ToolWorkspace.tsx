@@ -2,26 +2,41 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
-import { 
-  FileMinus, FileText, MonitorPlay, Table, Image as ImageIcon, 
-  Unlock, Lock, SlidersHorizontal, AlignLeft, Layers, Scissors, 
-  Type, Box, FileCode, Edit3, Scan, FormInput, Languages, 
-  Workflow, PenTool, ShieldCheck, Download, Loader2, ArrowLeft, 
+import {
+  FileMinus, FileText, MonitorPlay, Table, Image as ImageIcon,
+  Unlock, Lock, SlidersHorizontal, AlignLeft, Layers, Scissors,
+  Type, Box, FileCode, Edit3, Scan, FormInput, Languages,
+  Workflow, PenTool, ShieldCheck, Download, Loader2, ArrowLeft,
   CheckCircle2, AlertCircle, RefreshCw, Trash2, Camera, Plus, Trash, GripVertical,
   Globe, Search, Eye, Shield, FileUser, Palette, LayoutTemplate, HelpCircle
 } from 'lucide-react';
-import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
-import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
-
-import JSZip from 'jszip';
 import { addProcessingHistory } from '@/lib/auth';
 import AdBanner from '@/components/AdBanner';
 import { compressPDF, pdfToWord, pdfToExcel, pdfToPpt, comparePDFs, ocrPdf, pdfToMarkdown, createPdfForm, FormFieldDef, executeWorkflow, WorkflowStep, translatePDF, ocrToEditablePDF, checkPasswordStrength, PasswordStrengthResult, generateResumePDF, ResumeData, applySmartWatermark, WatermarkConfig } from '@/lib/pdf-tools';
 import { needsUnicodeFont, registerUnicodeFontJsPDF, getUnicodeFontForPdfLib } from '@/lib/unicode-fonts';
 import { processForPdfRendering, needsRTLReordering } from '@/lib/bidi';
+
+let _pdfLib: typeof import('pdf-lib') | null = null;
+async function getPdfLib() {
+  if (!_pdfLib) _pdfLib = await import('pdf-lib');
+  return _pdfLib;
+}
+let _jsPDF: typeof import('jspdf') | null = null;
+async function getJsPDF() {
+  if (!_jsPDF) _jsPDF = await import('jspdf');
+  return _jsPDF;
+}
+let _xlsx: typeof import('xlsx') | null = null;
+async function getXLSX() {
+  if (!_xlsx) _xlsx = await import('xlsx');
+  return _xlsx;
+}
+let _jszip: typeof import('jszip') | null = null;
+async function getJSZip() {
+  if (!_jszip) _jszip = await import('jszip');
+  return _jszip;
+}
 
 
 interface ToolConfig {
@@ -156,6 +171,7 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
     if (files.length === 0 || !['organize', 'pdf-forms'].includes(toolId)) return;
     const readPdfData = async () => {
       try {
+        const { PDFDocument } = await getPdfLib();
         const buffer = await files[0].arrayBuffer();
         const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
         const count = pdf.getPageCount();
@@ -235,6 +251,10 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
     try {
       let resultBlob: Blob | null = null;
       let outName = 'processed.pdf';
+      const { PDFDocument, rgb, degrees, StandardFonts } = await getPdfLib();
+      const { default: jsPDF } = await getJsPDF();
+      const XLSX = await getXLSX();
+      const JSZip = (await getJSZip()).default;
 
       if (toolId === 'compress') { const r = await compressPDF(files[0]); resultBlob = r.blob; outName = r.name; }
       else if (toolId === 'word-to-pdf') {
@@ -625,7 +645,7 @@ p{margin:0;padding:0;}
         )}
 
         {resultUrl ? (
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 md:p-12 text-center">
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 md:p-12 text-center animate-[fadeInUp_0.3s_ease-out]">
             <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-emerald-100 shadow-sm">
               <CheckCircle2 className="w-10 h-10" />
             </div>
@@ -651,7 +671,7 @@ p{margin:0;padding:0;}
                 <ul className="mt-2 text-xs text-slate-600 list-disc list-inside">{passwordResult.suggestions.map((s,i) => <li key={i}>{s}</li>)}</ul>
               </div>
             )}
-          </motion.div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

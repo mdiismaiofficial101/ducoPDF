@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 
 export default function TrustStatsBar() {
@@ -9,18 +7,11 @@ export default function TrustStatsBar() {
       aria-label="Trust and Security Signals"
       className="relative w-full overflow-hidden border-t border-b border-white/10 select-none"
     >
-      {/* Self-contained CSS for hardware-accelerated animated mesh gradient background */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes subtle-mesh {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
         .animate-mesh-gradient {
           background: linear-gradient(135deg, #09090b, #111115, #1d1233, #071f1e, #09090b);
@@ -28,7 +19,7 @@ export default function TrustStatsBar() {
           animation: subtle-mesh 25s ease infinite;
           will-change: background-position;
         }
-      `}</style>
+      `}} />
 
       {/* Main glassmorphism container */}
       <div className="animate-mesh-gradient relative w-full py-8 md:py-10 px-4 sm:px-6 lg:px-8 flex items-center justify-center">

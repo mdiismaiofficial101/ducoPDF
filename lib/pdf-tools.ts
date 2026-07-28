@@ -1,14 +1,8 @@
 import { PDFDocument, rgb, degrees, StandardFonts, PDFFont, PDFImage } from 'pdf-lib';
-import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
-import JSZip from 'jszip';
 import {
   getUnicodeFontForPdfLib,
-  registerUnicodeFontJsPDF,
   needsUnicodeFont,
   wrapText,
-  detectPrimaryScript,
-  fetchFontBytes,
 } from './unicode-fonts';
 import { processForPdfRendering, needsRTLReordering } from './bidi';
 
@@ -100,6 +94,7 @@ export async function pdfToExcel(file: File): Promise<{ blob: Blob; name: string
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+  const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
   const wb = XLSX.utils.book_new();
