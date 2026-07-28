@@ -67,7 +67,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  transpilePackages: ['motion', 'react-pdf', 'pdfjs-dist'],
+  transpilePackages: ['pdfjs-dist'],
   webpack: (config, {dev}) => {
     if (dev && process.env.DISABLE_HMR === 'true') {
       config.watchOptions = {
