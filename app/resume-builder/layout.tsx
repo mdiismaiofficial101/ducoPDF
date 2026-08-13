@@ -6,14 +6,14 @@ import { generateBreadcrumbSchema, generateSoftwareApplicationSchema, generateTo
 import RatingWidget from '@/components/RatingWidget';
 import { getToolRatings } from '@/lib/ratings';
 
-export const metadata: Metadata = getPageSEO('resume-builder');
+export const metadata: Metadata = getPageSEO('resume');
 
 export default async function ToolLayout({ children }: { children: React.ReactNode }) {
   const ratingSummary = await getToolRatings('resume-builder');
   const aggregateRating = ratingSummary.total > 0 ? { ratingValue: ratingSummary.average, ratingCount: ratingSummary.total } : undefined;
 
 
-  const seo = getPageSEO('resume-builder');
+  const seo = getPageSEO('resume');
   const toolName = typeof seo.title === 'string' ? seo.title.split(' - ')[0].split(' | ')[0] : '';
   return (
     <>

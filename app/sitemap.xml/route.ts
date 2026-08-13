@@ -12,7 +12,8 @@ async function fetchDynamicUrls() {
       const data = await blogRes.json();
       if (Array.isArray(data.blogs)) {
         const cats = new Set<string>();
-        data.blogs.forEach((post: { slug: string; updatedAt?: string; createdAt?: string; category?: string }) => {
+        const authors = new Set<string>();
+        data.blogs.forEach((post: { slug: string; updatedAt?: string; createdAt?: string; category?: string; author?: string }) => {
           if (post.slug) {
             urls.push({
               url: `${SITE_URL}/blog/${post.slug}`,
@@ -22,6 +23,7 @@ async function fetchDynamicUrls() {
             });
           }
           if (post.category) cats.add(post.category);
+          if (post.author) authors.add(post.author);
         });
         cats.forEach((cat) => {
           urls.push({
@@ -29,6 +31,14 @@ async function fetchDynamicUrls() {
             lastModified: new Date().toISOString(),
             changeFrequency: 'weekly',
             priority: 0.7,
+          });
+        });
+        authors.forEach((author) => {
+          urls.push({
+            url: `${SITE_URL}/author/${encodeURIComponent(author)}`,
+            lastModified: new Date().toISOString(),
+            changeFrequency: 'weekly',
+            priority: 0.6,
           });
         });
       }
@@ -82,7 +92,6 @@ export async function GET() {
     { url: `${SITE_URL}/workflows`, lastModified: new Date().toISOString(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/templates`, lastModified: new Date().toISOString(), changeFrequency: 'weekly', priority: 0.7 },
     { url: `${SITE_URL}/blog`, lastModified: new Date().toISOString(), changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${SITE_URL}/community`, lastModified: new Date().toISOString(), changeFrequency: 'weekly', priority: 0.7 },
     { url: `${SITE_URL}/privacy`, lastModified: new Date().toISOString(), changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/terms`, lastModified: new Date().toISOString(), changeFrequency: 'yearly', priority: 0.3 },
   ];

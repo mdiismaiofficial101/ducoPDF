@@ -18,6 +18,24 @@ async function getBlogBySlug(slug: string) {
   }
 }
 
+async function getAllBlogs() {
+  try {
+    const res = await fetch(`${BLOG_API_URL}?published=1`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.blogs) ? data.blogs : [];
+  } catch {
+    return [];
+  }
+}
+
+function getRelatedBlogs(blog: any, all: any[]) {
+  const others = all.filter((b: any) => b.id !== blog.id);
+  const relatedByTool = others.filter((b: any) => b.relatedTools?.some((t: string) => blog.relatedTools?.includes(t)));
+  const relatedByCat = others.filter((b: any) => b.category === blog.category && !relatedByTool.includes(b));
+  return [...relatedByTool, ...relatedByCat].slice(0, 3);
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const blog = await getBlogBySlug(slug);
@@ -71,6 +89,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     notFound();
   }
 
+  const allBlogs = await getAllBlogs();
+  const relatedBlogs = getRelatedBlogs(blog, allBlogs);
+
   return (
     <>
       <JsonLd data={generateBreadcrumbSchema([
@@ -81,7 +102,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       {blog.faq && blog.faq.length > 0 && (
         <JsonLd data={generateFAQSchema(blog.faq)} />
       )}
-      <BlogPostClient blog={blog} />
+      <BlogPostClient blog={blog} initialRelated={relatedBlogs} />
     </>
   );
 }

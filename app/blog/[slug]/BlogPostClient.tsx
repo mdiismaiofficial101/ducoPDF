@@ -12,15 +12,17 @@ import { Calendar, Clock, User, Tag, ArrowLeft, ArrowRight, Share2, Check } from
 
 interface BlogPostClientProps {
   blog: BlogPost | null;
+  initialRelated?: BlogPost[];
 }
 
-export default function BlogPostClient({ blog }: BlogPostClientProps) {
+export default function BlogPostClient({ blog, initialRelated = [] }: BlogPostClientProps) {
   const router = useRouter();
-  const [related, setRelated] = useState<BlogPost[]>([]);
+  const [related, setRelated] = useState<BlogPost[]>(initialRelated);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!blog) return;
+    if (initialRelated.length > 0) return;
     fetch('/api/blogs')
       .then(r => r.json())
       .then(d => {
@@ -31,7 +33,7 @@ export default function BlogPostClient({ blog }: BlogPostClientProps) {
         setRelated([...relatedByTool, ...relatedByCat].slice(0, 3));
       })
       .catch(() => {});
-  }, [blog]);
+  }, [blog, initialRelated]);
 
   if (!blog) {
     return (
@@ -85,10 +87,12 @@ export default function BlogPostClient({ blog }: BlogPostClientProps) {
       <article>
         <header className="mb-8">
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 mb-4">
-            <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold text-xs">{blog.category}</span>
+            <Link href={`/blog/category/${encodeURIComponent(blog.category)}`} className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold text-xs hover:bg-indigo-100 transition">{blog.category}</Link>
             <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(blog.publishDate)}</span>
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {readingTime} min read</span>
-            <span className="flex items-center gap-1.5"><User className="w-4 h-4" /> {blog.author}</span>
+            <Link href={`/author/${encodeURIComponent(blog.author)}`} className="flex items-center gap-1.5 hover:text-[#1A237E] transition">
+              <User className="w-4 h-4" /> {blog.author}
+            </Link>
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 leading-tight mb-4">{blog.title}</h1>

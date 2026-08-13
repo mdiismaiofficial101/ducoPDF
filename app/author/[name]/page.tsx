@@ -1,22 +1,26 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getPublishedBlogs, BlogPost, formatDate, calculateReadingTime } from '@/lib/blog';
-import { Calendar, Clock, ArrowRight, FileText } from 'lucide-react';
+import { BlogPost, formatDate, calculateReadingTime } from '@/lib/blog';
+import { Calendar, Clock, FileText } from 'lucide-react';
 
-export default function AuthorPage() {
-  const params = useParams();
-  const authorName = decodeURIComponent(params?.name as string || '');
-  const [blogs, setBlogs] = useState<BlogPost[]>([]);
+const BLOG_API_URL = 'https://img.cybronetwork.online/blogs-api.php';
 
-  useEffect(() => {
-    setBlogs(getPublishedBlogs().filter(b => b.author.toLowerCase() === authorName.toLowerCase()));
-    window.addEventListener('blog-updated', () => setBlogs(getPublishedBlogs().filter(b => b.author.toLowerCase() === authorName.toLowerCase())));
-    return () => window.removeEventListener('blog-updated', () => {});
-  }, [authorName]);
+async function getPublishedBlogs(): Promise<BlogPost[]> {
+  try {
+    const res = await fetch(`${BLOG_API_URL}?published=1`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.blogs) ? data.blogs : [];
+  } catch {
+    return [];
+  }
+}
+
+export default async function AuthorPage({ params }: { params: Promise<{ name: string }> }) {
+  const { name } = await params;
+  const authorName = decodeURIComponent(name);
+  const allBlogs = await getPublishedBlogs();
+  const blogs = allBlogs.filter(b => b.author.toLowerCase() === authorName.toLowerCase());
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
