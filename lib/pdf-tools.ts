@@ -7,22 +7,95 @@ import {
 import { processForPdfRendering, needsRTLReordering } from './bidi';
 
 // ─── REAL COMPRESS PDF ───────────────────────────────────────────────
-export async function compressPDF(file: File): Promise<{ blob: Blob; name: string }> {
+export type CompressLevel = 'low' | 'medium' | 'high';
+
+const COMPRESS_SETTINGS: Record<CompressLevel, { scale: number; quality: number }> = {
+  low: { scale: 200 / 72, quality: 0.85 },
+  medium: { scale: 150 / 72, quality: 0.7 },
+  high: { scale: 110 / 72, quality: 0.5 },
+};
+const MAX_CANVAS_DIM = 4096;
+const MAX_COMPRESS_PAGES = 250;
+
+export async function compressPDF(file: File, level: CompressLevel = 'medium'): Promise<{ blob: Blob; name: string }> {
   const buffer = await file.arrayBuffer();
-  const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
 
-  // Remove unused objects, compress object streams, remove metadata
-  const bytes = await pdf.save({
-    useObjectStreams: true,
-    addDefaultPage: false,
-    objectsPerTick: 100,
-  });
+  // Step 1: baseline save — strip unused objects, metadata, and compress streams
+  let baselineBytes: Uint8Array;
+  let srcPdf: PDFDocument;
+  try {
+    srcPdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
+    baselineBytes = await srcPdf.save({ useObjectStreams: true, addDefaultPage: false, objectsPerTick: 100 });
+  } catch {
+    return { blob: new Blob([new Uint8Array(buffer)], { type: 'application/pdf' }), name: `compressed_${file.name}` };
+  }
 
-  // Try to further reduce by re-encoding font subsets
-  const compressed = await PDFDocument.load(bytes);
-  const reBytes = await compressed.save({ useObjectStreams: true });
+  // Step 2: image-level compression — render image-heavy pages to JPEG and rebuild
+  let imageCompressedBytes: Uint8Array | null = null;
+  try {
+    const pdfjs = await import('pdfjs-dist');
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-  const blob = new Blob([new Uint8Array(reBytes)], { type: 'application/pdf' });
+    const settings = COMPRESS_SETTINGS[level];
+    const outPdf = await PDFDocument.create();
+    const pdfjsData = buffer.slice(0);
+    const srcDoc = await pdfjs.getDocument({ data: pdfjsData }).promise;
+    const pageCount = Math.min(srcDoc.numPages, MAX_COMPRESS_PAGES);
+
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await srcDoc.getPage(i);
+      const baseViewport = page.getViewport({ scale: 1 });
+      let scale = settings.scale;
+      const maxDim = Math.max(baseViewport.width, baseViewport.height) * scale;
+      if (maxDim > MAX_CANVAS_DIM) scale *= MAX_CANVAS_DIM / maxDim;
+
+      // Keep text-only pages as-is (preserve selectable text); only rasterize pages with images
+      let rasterize = false;
+      try {
+        const opList = await page.getOperatorList();
+        rasterize = opList.fnArray.some(fn => fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintInlineImageXObject);
+      } catch { rasterize = false; }
+
+      if (rasterize) {
+        const vp = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(vp.width);
+        canvas.height = Math.floor(vp.height);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          try {
+            await page.render({ canvasContext: ctx, viewport: vp }).promise;
+            const jpegBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', settings.quality));
+            canvas.width = 0; canvas.height = 0;
+            if (jpegBlob) {
+              const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
+              const jpg = await outPdf.embedJpg(jpegBytes);
+              const newPage = outPdf.addPage([baseViewport.width, baseViewport.height]);
+              newPage.drawImage(jpg, { x: 0, y: 0, width: baseViewport.width, height: baseViewport.height });
+              continue;
+            }
+          } catch {
+            canvas.width = 0; canvas.height = 0;
+          }
+        }
+      }
+
+      const [cp] = await outPdf.copyPages(srcPdf, [i - 1]);
+      outPdf.addPage(cp);
+    }
+
+    imageCompressedBytes = await outPdf.save({ useObjectStreams: true, addDefaultPage: false, objectsPerTick: 100 });
+  } catch {
+    imageCompressedBytes = null;
+  }
+
+  // Step 3: pick the smallest result — output is never larger than the input
+  const inputBytes = new Uint8Array(buffer);
+  let best = inputBytes;
+  if (baselineBytes.length < best.length) best = baselineBytes;
+  if (imageCompressedBytes && imageCompressedBytes.length < best.length) best = imageCompressedBytes;
+
+  const blob = new Blob([best as unknown as BlobPart], { type: 'application/pdf' });
   return { blob, name: `compressed_${file.name}` };
 }
 

@@ -262,7 +262,7 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
       const XLSX = await getXLSX();
       const JSZip = (await getJSZip()).default;
 
-      if (toolId === 'compress') { const r = await compressPDF(files[0]); resultBlob = r.blob; outName = r.name; }
+      if (toolId === 'compress') { const r = await compressPDF(files[0], compressLevel); resultBlob = r.blob; outName = r.name; }
       else if (toolId === 'word-to-pdf') {
         const buffer = await files[0].arrayBuffer();
         const { default: mammoth } = await import('mammoth');
