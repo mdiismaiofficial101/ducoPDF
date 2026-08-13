@@ -256,52 +256,138 @@ export async function redactPDF(file: File, words: string[]): Promise<{ blob: Bl
   return { blob: new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' }), name: `redacted_${file.name}` };
 }
 
-// ─── REAL PDF TO WORD ────────────────────────────────────────────────
-export async function pdfToWord(file: File): Promise<{ blob: Blob; name: string }> {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// ─── REAL PDF TO WORD (LAYOUT-AWARE) ─────────────────────────────────
+interface LayoutTextItem { str: string; x: number; width: number; height: number; bold: boolean; italic: boolean; }
+interface LayoutLine { y: number; xStart: number; xEnd: number; maxSize: number; items: LayoutTextItem[]; }
 
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-  const pages: string[] = [];
+function collectLayoutLines(tc: any, pageWidth: number): LayoutLine[] {
+  const sorted = (tc.items as any[])
+    .filter((i: any) => i.str && i.str.trim())
+    .sort((a: any, b: any) => b.transform[5] - a.transform[5]);
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const text = textContent.items.map((item: any) => item.str).join(' ');
-    pages.push(text);
+  const lines: LayoutLine[] = [];
+  for (const item of sorted) {
+    const y = item.transform[5];
+    const str = item.str as string;
+    const fontSize = Math.abs(item.transform[3] || item.height || 10);
+    const bold = /bold|heavy|black|demi/i.test(item.fontName || '');
+    const italic = /italic|oblique/i.test(item.fontName || '');
+    const entry: LayoutTextItem = { str, x: item.transform[4], width: item.width || 0, height: item.height || fontSize, bold, italic };
+    const line = lines[lines.length - 1];
+    const tolerance = Math.max(2, fontSize * 0.4);
+    if (line && Math.abs(y - line.y) <= tolerance) {
+      line.items.push(entry);
+      line.y = y;
+      line.maxSize = Math.max(line.maxSize, fontSize);
+    } else {
+      lines.push({ y, xStart: entry.x, xEnd: entry.x + entry.width, maxSize: fontSize, items: [entry] });
+    }
   }
 
-  const { Document, Packer, Paragraph, TextRun, Header, Footer, AlignmentType, HeadingLevel } = await import('docx');
+  for (const l of lines) {
+    l.items.sort((a, b) => a.x - b.x);
+    l.xStart = l.items[0].x;
+    l.xEnd = l.items[l.items.length - 1].x + l.items[l.items.length - 1].width;
+  }
+  return lines;
+}
+
+function linesToParagraphs(lines: LayoutLine[], pageWidth: number): Array<{ runs: LayoutTextItem[]; maxSize: number; align: 'left' | 'center' | 'right'; short: boolean }> {
+  const bodySizes = lines.map(l => l.maxSize).sort((a, b) => a - b);
+  const medianSize = bodySizes.length > 0 ? bodySizes[Math.floor(bodySizes.length / 2)] : 12;
+
+  const paras: Array<{ runs: LayoutTextItem[]; maxSize: number; align: 'left' | 'center' | 'right'; short: boolean }> = [];
+  let current: { runs: LayoutTextItem[]; maxSize: number; align: 'left' | 'center' | 'right'; short: boolean } | null = null;
+  let prevY = 0;
+
+  for (const line of lines) {
+    const gap = current ? prevY - line.y - line.maxSize : 0;
+    const firstLine = current === null;
+    const indent = line.xStart > 25;
+    const short = line.xEnd < pageWidth * 0.55;
+    const midX = (line.xStart + line.xEnd) / 2;
+    let align: 'left' | 'center' | 'right' = 'left';
+    if (line.xStart > pageWidth * 0.35 && midX > pageWidth * 0.45) align = 'center';
+    else if (line.xEnd > pageWidth * 0.95) align = 'right';
+
+    const startNew = firstLine || gap > line.maxSize * 0.9 || indent || (short && align === 'left');
+    if (startNew && current) {
+      paras.push(current);
+      current = null;
+    }
+    if (!current) {
+      current = { runs: [], maxSize: line.maxSize, align, short };
+      if (indent) current.runs.push({ str: '\u00A0\u00A0\u00A0', x: 0, width: 0, height: line.maxSize, bold: false, italic: false });
+    }
+    for (const item of line.items) {
+      const lastRun = current.runs[current.runs.length - 1];
+      if (lastRun && !lastRun.str.endsWith('\u00A0') && item.x - (lastRun.x + lastRun.width) > 1.5) {
+        current.runs.push({ str: ' ', x: 0, width: 0, height: item.height, bold: false, italic: false });
+      }
+      current.runs.push(item);
+    }
+    current.maxSize = Math.max(current.maxSize, line.maxSize);
+    prevY = line.y;
+  }
+  if (current) paras.push(current);
+  return paras;
+}
+
+export async function pdfToWord(file: File): Promise<{ blob: Blob; name: string }> {
+  const pdfjs = await import('pdfjs-dist');
+  if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
+  }
+
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buffer.slice(0) }).promise;
+  const { Document, Packer, Paragraph, TextRun, Header, Footer, AlignmentType, HeadingLevel, PageBreak } = await import('docx');
 
   const children: any[] = [];
+  const medianSizes: number[] = [];
+
+  const allLines: LayoutLine[][] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const vp = page.getViewport({ scale: 1 });
+    const tc = await page.getTextContent();
+    const lines = collectLayoutLines(tc, vp.width);
+    allLines.push(lines);
+    for (const l of lines) medianSizes.push(l.maxSize);
+  }
+
+  const bodySize = medianSizes.length > 0 ? medianSizes.sort((a, b) => a - b)[Math.floor(medianSizes.length / 2)] : 12;
+  const headingSize = Math.max(16, bodySize * 1.25);
+
   children.push(
     new Paragraph({
-      children: [new TextRun({ text: file.name.replace('.pdf', ''), bold: true, size: 36 })],
+      children: [new TextRun({ text: file.name.replace('.pdf', ''), bold: true, size: 40 })],
       heading: HeadingLevel.TITLE,
     }),
     new Paragraph({ children: [new TextRun({ text: '' })] }),
   );
 
-  pages.forEach((text, idx) => {
-    children.push(
-      new Paragraph({
-        children: [new TextRun({ text: `Page ${idx + 1}`, bold: true, size: 24 })],
-        heading: HeadingLevel.HEADING_1,
-      }),
-      new Paragraph({ children: [new TextRun({ text: '' })] }),
-    );
-    const lines = text.match(/.{1,80}(?:\s|$)/g) || [text];
-    lines.forEach((line) => {
-      children.push(
-        new Paragraph({
-          spacing: { after: 120 },
-          children: [new TextRun({ text: line.trim(), size: 20 })],
-        }),
-      );
-    });
-    children.push(new Paragraph({ children: [new TextRun({ text: '' })] }));
-  });
+  for (let p = 0; p < allLines.length; p++) {
+    if (p > 0) children.push(new Paragraph({ children: [new PageBreak()] }));
+    const lines = allLines[p];
+    const paras = linesToParagraphs(lines, 612);
+
+    for (const para of paras) {
+      const isHeading = para.maxSize >= headingSize;
+      const runs = para.runs.map(r => new TextRun({
+        text: r.str,
+        bold: r.bold || isHeading,
+        italic: r.italic,
+        size: isHeading ? Math.min(56, Math.round(para.maxSize * 2)) : Math.max(18, Math.round(Math.min(para.maxSize, bodySize * 1.15) * 2)),
+      }));
+      children.push(new Paragraph({
+        alignment: para.align === 'center' ? AlignmentType.CENTER : para.align === 'right' ? AlignmentType.RIGHT : AlignmentType.LEFT,
+        spacing: { after: 140 },
+        heading: isHeading ? (para.maxSize >= headingSize * 1.3 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2) : undefined,
+        children: runs,
+      }));
+    }
+  }
 
   const doc = new Document({
     title: file.name.replace('.pdf', ''),
@@ -319,42 +405,96 @@ export async function pdfToWord(file: File): Promise<{ blob: Blob; name: string 
   return { blob: docxBytes, name: file.name.replace('.pdf', '') + '.docx' };
 }
 
-// ─── REAL PDF TO EXCEL ───────────────────────────────────────────────
+// ─── REAL PDF TO EXCEL (TABLE DETECTION) ─────────────────────────────
+function clusterXPositions(xs: number[], tolerance = 8): number[] {
+  const sorted = [...xs].sort((a, b) => a - b);
+  const centers: number[] = [];
+  for (const x of sorted) {
+    const last = centers[centers.length - 1];
+    if (last !== undefined && Math.abs(x - last) <= tolerance) {
+      centers[centers.length - 1] = (last * 2 + x) / 3;
+    } else {
+      centers.push(x);
+    }
+  }
+  return centers;
+}
+
+function detectTableGrid(tc: any): string[][] {
+  const items = (tc.items as any[])
+    .filter((i: any) => i.str && i.str.trim())
+    .sort((a: any, b: any) => b.transform[5] - a.transform[5]);
+
+  const xPositions: number[] = [];
+  const lines: Array<Array<{ str: string; x: number; width: number; y: number; height: number }>> = [];
+
+  for (const item of items) {
+    const y = item.transform[5];
+    const fontSize = Math.abs(item.transform[3] || item.height || 10);
+    const entry = { str: item.str, x: item.transform[4], width: item.width || 0, y, height: item.height || fontSize };
+    xPositions.push(entry.x);
+    const line = lines[lines.length - 1];
+    const tolerance = Math.max(2, fontSize * 0.4);
+    if (line && Math.abs(y - line[0].y) <= tolerance) line.push(entry);
+    else lines.push([entry]);
+  }
+
+  if (lines.length === 0) return [];
+  const columnCenters = clusterXPositions(xPositions);
+  const columns = columnCenters.map(c => ({
+    center: c,
+    lo: c - 14,
+    hi: c + 14,
+  }));
+
+  const grid: string[][] = [];
+  for (const line of lines) {
+    const row: string[] = new Array(columns.length).fill('');
+    const sortedItems = [...line].sort((a, b) => a.x - b.x);
+    for (const item of sortedItems) {
+      let col = columns.findIndex(c => item.x >= c.lo && item.x <= c.hi);
+      if (col === -1) {
+        let best = 0;
+        let bestDist = Infinity;
+        columns.forEach((c, idx) => {
+          const d = Math.abs(item.x - c.center);
+          if (d < bestDist) { bestDist = d; best = idx; }
+        });
+        col = best;
+      }
+      if (row[col]) row[col] += ' ';
+      row[col] += item.str;
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+
 export async function pdfToExcel(file: File): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
+  }
 
   const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  const pdf = await pdfjs.getDocument({ data: buffer.slice(0) }).promise;
   const wb = XLSX.utils.book_new();
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const tc = await page.getTextContent();
-    const rows: Record<string, string>[] = [];
-    let currentRow: Record<string, string> = {};
-    let colIdx = 0;
-    let lastY = -1;
+    const grid = detectTableGrid(tc);
 
-    for (const item of tc.items) {
-      const itemAny = item as any;
-      const y = Math.round(itemAny.transform?.[5] || 0);
-      if (lastY !== -1 && Math.abs(y - lastY) > 5) {
-        if (Object.keys(currentRow).length > 0) rows.push(currentRow);
-        currentRow = {};
-        colIdx = 0;
-      }
-      const key = XLSX.utils.encode_col(colIdx);
-      currentRow[key] = (currentRow[key] || '') + itemAny.str;
-      colIdx++;
-      lastY = y;
-    }
-    if (Object.keys(currentRow).length > 0) rows.push(currentRow);
-
-    const ws = rows.length > 0
-      ? XLSX.utils.json_to_sheet(rows)
+    const ws = grid.length > 0
+      ? XLSX.utils.aoa_to_sheet(grid)
       : XLSX.utils.aoa_to_sheet([['(No extractable text on this page)']]);
+    const colCount = grid.length > 0 ? Math.max(...grid.map(r => r.length)) : 1;
+    for (let c = 0; c < colCount; c++) {
+      const width = ws['!cols'] && ws['!cols'][c] ? Math.max(ws['!cols'][c].wch || 10, 18) : 18;
+      ws['!cols'] = ws['!cols'] || [];
+      ws['!cols'][c] = { wch: width };
+    }
     XLSX.utils.book_append_sheet(wb, ws, `Page ${i}`);
   }
 
@@ -451,39 +591,130 @@ export async function comparePDFs(file1: File, file2: File): Promise<{ blob: Blo
 }
 
 // ─── REAL OCR PDF ────────────────────────────────────────────────────
+const OCR_WORKERS = 2;
+const OCR_MAX_DIM = 3400;
+
+async function createOcrWorkerPool(Tesseract: any, langString: string, count: number): Promise<any[]> {
+  const workers: any[] = [];
+  for (let i = 0; i < count; i++) {
+    const w = await Tesseract.createWorker(langString);
+    await w.setParameters({ preserve_interword_spaces: '1' });
+    workers.push(w);
+  }
+  return workers;
+}
+
+async function renderPageForOcr(page: any): Promise<{ canvas: HTMLCanvasElement; vp: any; scale: number }> {
+  const baseVp = page.getViewport({ scale: 1 });
+  let scale = 2.5;
+  const maxDim = Math.max(baseVp.width, baseVp.height);
+  if (maxDim * scale > OCR_MAX_DIM) scale = OCR_MAX_DIM / maxDim;
+
+  const vp = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.floor(vp.width);
+  canvas.height = Math.floor(vp.height);
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  return { canvas, vp, scale };
+}
+
+function preprocessForOcr(canvas: HTMLCanvasElement): void {
+  const ctx = canvas.getContext('2d')!;
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const count = data.length / 4;
+  const lum = new Uint8Array(count);
+  for (let i = 0; i < count; i++) {
+    lum[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+  }
+  const sorted = new Uint8Array(lum);
+  const idx = new Uint32Array(count);
+  for (let i = 0; i < count; i++) idx[i] = i;
+  idx.sort((a, b) => sorted[a] - sorted[b]);
+  const lo = sorted[idx[Math.floor(count * 0.02)]];
+  const hi = sorted[idx[Math.floor(count * 0.98)]];
+  const range = Math.max(hi - lo, 32);
+  for (let i = 0; i < count; i++) {
+    const v = Math.min(255, Math.max(0, ((lum[i] - lo) / range) * 255));
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v;
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+async function pageHasSelectableText(page: any): Promise<string | null> {
+  const tc = await page.getTextContent();
+  const joined = (tc.items as any[]).filter((i: any) => i.str && i.str.trim()).map((i: any) => i.str).join(' ').trim();
+  return joined.length > 0 ? joined : null;
+}
+
+async function ocrPageToText(worker: any, page: any): Promise<{ text: string; words: any[]; vp: any; canvas: HTMLCanvasElement }> {
+  const { canvas, vp } = await renderPageForOcr(page);
+  preprocessForOcr(canvas);
+  const { data } = await worker.recognize(canvas);
+  return { text: data.text || '', words: data.words || [], vp, canvas };
+}
+
 export async function ocrPdf(
   file: File,
   onProgress?: (msg: string) => void,
   languages?: string[]
 ): Promise<string> {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
+  }
 
   const Tesseract = (await import('tesseract.js')).default;
   const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-  let fullText = '';
+  const pdf = await pdfjs.getDocument({ data: buffer.slice(0) }).promise;
 
   const ocrLangs = languages && languages.length > 0 ? languages : ['eng'];
   const langString = ocrLangs.join('+');
-  const worker = await Tesseract.createWorker(langString);
 
+  const pageTasks: Array<{ page: any; existingText: string | null }> = [];
   for (let i = 1; i <= pdf.numPages; i++) {
-    onProgress?.(`OCR processing page ${i}/${pdf.numPages}...`);
     const page = await pdf.getPage(i);
-    const vp = page.getViewport({ scale: 2.0 });
-    const canvas = document.createElement('canvas');
-    canvas.width = vp.width;
-    canvas.height = vp.height;
-    const ctx = canvas.getContext('2d')!;
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
-
-    const { data } = await worker.recognize(canvas);
-    fullText += `\n\n--- Page ${i} ---\n\n${data.text}`;
+    const existingText = await pageHasSelectableText(page);
+    pageTasks.push({ page, existingText });
   }
 
-  await worker.terminate();
-  return fullText.trim();
+  const ocrCount = pageTasks.filter(t => !t.existingText).length;
+  const workerCount = ocrCount > 0 ? Math.max(1, Math.min(OCR_WORKERS, ocrCount)) : 0;
+  if (workerCount === 0) {
+    return pageTasks.map((t, idx) => `\n\n--- Page ${idx + 1} ---\n\n${t.existingText ?? ''}`).join('').trim();
+  }
+  const workers = await createOcrWorkerPool(Tesseract, langString, workerCount);
+
+  const results: string[] = new Array(pageTasks.length);
+  let next = 0;
+  const runWorker = async (worker: any) => {
+    while (true) {
+      const idx = next++;
+      if (idx >= pageTasks.length) break;
+      const task = pageTasks[idx];
+      if (task.existingText) {
+        results[idx] = task.existingText;
+        continue;
+      }
+      onProgress?.(`OCR processing page ${idx + 1}/${pdf.numPages}...`);
+      const { text, canvas } = await ocrPageToText(worker, task.page);
+      canvas.width = 0;
+      canvas.height = 0;
+      results[idx] = text;
+    }
+  };
+
+  await Promise.all(workers.map(runWorker));
+  await Promise.all(workers.map((w: any) => w.terminate()));
+
+  const skippedCount = pageTasks.filter(t => t.existingText).length;
+  const note = skippedCount > 0
+    ? `\n\n(Note: ${skippedCount} page(s) already had selectable text and were copied directly without OCR.)`
+    : '';
+  return results.map((t, idx) => `\n\n--- Page ${idx + 1} ---\n\n${t}`).join('').trim() + note;
 }
 
 // ─── REAL PDF TO MARKDOWN ────────────────────────────────────────────
@@ -785,33 +1016,67 @@ export async function ocrToEditablePDF(
   languages?: string[]
 ): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
+  }
 
   const Tesseract = (await import('tesseract.js')).default;
   const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  const pdf = await pdfjs.getDocument({ data: buffer.slice(0) }).promise;
   const pdfDoc = await PDFDocument.create();
   const fallbackFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
   const ocrLangs = languages && languages.length > 0 ? languages : ['eng'];
   const langString = ocrLangs.join('+');
-  const worker = await Tesseract.createWorker(langString);
 
+  const pageTasks: Array<{ page: any; existingText: string | null }> = [];
   for (let i = 1; i <= pdf.numPages; i++) {
-    onProgress?.(`OCR processing page ${i}/${pdf.numPages}...`);
     const page = await pdf.getPage(i);
-    const vp = page.getViewport({ scale: 2.0 });
-    const canvas = document.createElement('canvas');
-    canvas.width = vp.width;
-    canvas.height = vp.height;
-    const ctx = canvas.getContext('2d')!;
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    const existingText = await pageHasSelectableText(page);
+    pageTasks.push({ page, existingText });
+  }
 
-    const { data: ocrData } = await worker.recognize(canvas);
+  const ocrCount = pageTasks.filter(t => !t.existingText).length;
+  const workerCount = ocrCount > 0 ? Math.max(1, Math.min(OCR_WORKERS, ocrCount)) : 0;
+  const outPages: Array<{ text: string | null; words: any[]; vp: any; canvas: HTMLCanvasElement | null }> = new Array(pageTasks.length);
+  if (workerCount === 0) {
+    for (let i = 0; i < pageTasks.length; i++) outPages[i] = { text: pageTasks[i].existingText, words: [], vp: null, canvas: null };
+  } else {
+  const workers = await createOcrWorkerPool(Tesseract, langString, workerCount);
+  let next = 0;
+  const runWorker = async (worker: any) => {
+    while (true) {
+      const idx = next++;
+      if (idx >= pageTasks.length) break;
+      const task = pageTasks[idx];
+      if (task.existingText) {
+        outPages[idx] = { text: task.existingText, words: [], vp: null, canvas: null };
+        continue;
+      }
+      onProgress?.(`OCR processing page ${idx + 1}/${pdf.numPages}...`);
+      const { text, words, vp, canvas } = await ocrPageToText(worker, task.page);
+      outPages[idx] = { text, words, vp, canvas };
+    }
+  };
 
+  await Promise.all(workers.map(runWorker));
+  await Promise.all(workers.map((w: any) => w.terminate()));
+  }
+
+  const srcPdf = await PDFDocument.load(buffer.slice(0), { ignoreEncryption: true });
+  for (let pi = 0; pi < outPages.length; pi++) {
+    const out = outPages[pi];
+    if (!out.canvas) {
+      const [cp] = await pdfDoc.copyPages(srcPdf, [pi]);
+      pdfDoc.addPage(cp);
+      continue;
+    }
+    const { vp, canvas } = out;
     const newPage = pdfDoc.addPage([vp.width, vp.height]);
 
     const imgData = canvas.toDataURL('image/png');
+    canvas.width = 0;
+    canvas.height = 0;
     const imgBytes = Uint8Array.from(atob(imgData.split(',')[1]), c => c.charCodeAt(0));
     let embeddedImg: PDFImage;
     try {
@@ -821,13 +1086,12 @@ export async function ocrToEditablePDF(
     }
     newPage.drawImage(embeddedImg, { x: 0, y: 0, width: vp.width, height: vp.height });
 
-    const fontSize = 10;
-    const ocrTextAll = ocrData.words.map((w: any) => w.text).join(' ');
+    const ocrTextAll = out.words.map((w: any) => w.text).join(' ');
     const ocrFont = needsUnicodeFont(ocrTextAll)
       ? await getUnicodeFontForPdfLib(ocrTextAll, pdfDoc)
       : fallbackFont;
 
-    for (const word of ocrData.words) {
+    for (const word of out.words) {
       const x = word.bbox.x0 * (vp.width / canvas.width);
       const y = vp.height - word.bbox.y1 * (vp.height / canvas.height);
       const w = (word.bbox.x1 - word.bbox.x0) * (vp.width / canvas.width);
@@ -845,7 +1109,6 @@ export async function ocrToEditablePDF(
     }
   }
 
-  await worker.terminate();
   const bytes = await pdfDoc.save();
   return {
     blob: new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }),
