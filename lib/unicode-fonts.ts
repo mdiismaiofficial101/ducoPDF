@@ -106,14 +106,14 @@ interface FontConfig {
 }
 
 const SCRIPT_FONT_MAP: Record<string, FontConfig> = {
-  latin: { regular: 'NotoSans-Regular', path: '/fonts/NotoSans-Regular.ttf', bold: 'NotoSans-Bold' },
-  cyrillic: { regular: 'NotoSans-Regular', path: '/fonts/NotoSans-Regular.ttf', bold: 'NotoSans-Bold' },
-  bengali: { regular: 'NotoSansBengali-Regular', path: '/fonts/NotoSansBengali-Regular.ttf' },
-  devanagari: { regular: 'NotoSansDevanagari-Regular', path: '/fonts/NotoSansDevanagari-Regular.ttf' },
-  arabic: { regular: 'NotoSansArabic-Regular', path: '/fonts/NotoSansArabic-Regular.ttf' },
-  cjk: { regular: 'NotoSansSC-Regular', path: '/fonts/NotoSansSC-Regular.ttf' },
-  hangul: { regular: 'NotoSansSC-Regular', path: '/fonts/NotoSansSC-Regular.ttf' },
-  kana: { regular: 'NotoSansJP-Regular', path: '/fonts/NotoSansJP-Regular.ttf' },
+  latin: { regular: 'NotoSans-Variable', path: '/fonts/NotoSans-Regular.ttf', bold: 'NotoSans-Bold' },
+  cyrillic: { regular: 'NotoSans-Variable', path: '/fonts/NotoSans-Regular.ttf', bold: 'NotoSans-Bold' },
+  bengali: { regular: 'NotoSansBengali', path: '/fonts/NotoSansBengali-Regular.ttf' },
+  devanagari: { regular: 'NotoSansDevanagari', path: '/fonts/NotoSansDevanagari-Regular.ttf' },
+  arabic: { regular: 'NotoSansArabic', path: '/fonts/NotoSansArabic-Regular.ttf' },
+  cjk: { regular: 'NotoSansSC', path: '/fonts/NotoSansSC-Regular.ttf' },
+  hangul: { regular: 'NotoSansSC', path: '/fonts/NotoSansSC-Regular.ttf' },
+  kana: { regular: 'NotoSansJP', path: '/fonts/NotoSansJP-Regular.ttf' },
 };
 
 /**

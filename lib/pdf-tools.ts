@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, degrees, StandardFonts, PDFFont, PDFImage } from 'pdf-lib';
 import {
   getUnicodeFontForPdfLib,
+  getUnicodeFontPairPdfLib,
   needsUnicodeFont,
   wrapText,
 } from './unicode-fonts';
@@ -16,6 +17,30 @@ const COMPRESS_SETTINGS: Record<CompressLevel, { scale: number; quality: number 
 };
 const MAX_CANVAS_DIM = 4096;
 const MAX_COMPRESS_PAGES = 250;
+
+function isGrayscaleImageData(data: Uint8ClampedArray, threshold = 12): boolean {
+  let total = 0;
+  let grayCount = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    total++;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (Math.abs(r - g) <= threshold && Math.abs(g - b) <= threshold && Math.abs(r - b) <= threshold) {
+      grayCount++;
+    }
+  }
+  return total > 0 && grayCount / total >= 0.9;
+}
+
+function fnv1a(bytes: Uint8Array): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < bytes.length; i++) {
+    h ^= bytes[i];
+    h = (h * 0x01000193) >>> 0;
+  }
+  return h.toString(16);
+}
 
 export async function compressPDF(file: File, level: CompressLevel = 'medium'): Promise<{ blob: Blob; name: string }> {
   const buffer = await file.arrayBuffer();
@@ -34,13 +59,16 @@ export async function compressPDF(file: File, level: CompressLevel = 'medium'): 
   let imageCompressedBytes: Uint8Array | null = null;
   try {
     const pdfjs = await import('pdfjs-dist');
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    if (typeof window !== 'undefined') {
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
+    }
 
     const settings = COMPRESS_SETTINGS[level];
     const outPdf = await PDFDocument.create();
     const pdfjsData = buffer.slice(0);
     const srcDoc = await pdfjs.getDocument({ data: pdfjsData }).promise;
     const pageCount = Math.min(srcDoc.numPages, MAX_COMPRESS_PAGES);
+    const imageDedup = new Map<string, any>();
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await srcDoc.getPage(i);
@@ -65,11 +93,29 @@ export async function compressPDF(file: File, level: CompressLevel = 'medium'): 
         if (ctx) {
           try {
             await page.render({ canvasContext: ctx, viewport: vp }).promise;
+            try {
+              const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              if (isGrayscaleImageData(imgData.data)) {
+                const d = imgData.data;
+                for (let k = 0; k < d.length; k += 4) {
+                  const l = Math.round(0.299 * d[k] + 0.587 * d[k + 1] + 0.114 * d[k + 2]);
+                  d[k] = l;
+                  d[k + 1] = l;
+                  d[k + 2] = l;
+                }
+                ctx.putImageData(imgData, 0, 0);
+              }
+            } catch { /* getImageData unsupported — skip grayscale pass */ }
             const jpegBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', settings.quality));
             canvas.width = 0; canvas.height = 0;
             if (jpegBlob) {
               const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
-              const jpg = await outPdf.embedJpg(jpegBytes);
+              const hash = fnv1a(jpegBytes);
+              let jpg = imageDedup.get(hash);
+              if (!jpg) {
+                jpg = await outPdf.embedJpg(jpegBytes);
+                imageDedup.set(hash, jpg);
+              }
               const newPage = outPdf.addPage([baseViewport.width, baseViewport.height]);
               newPage.drawImage(jpg, { x: 0, y: 0, width: baseViewport.width, height: baseViewport.height });
               continue;

@@ -140,4 +140,77 @@ describe('image re-encoding win (render path)', () => {
     expect(outBytes.length).toBeLessThan(input.length);
     expect(outBytes.length / input.length).toBeLessThan(0.75);
   });
+
+  it('grayscale-only pages get a stronger win than color pages (high compression)', async () => {
+    const grayInput = await createGrayPdf(3);
+    const file = new File([grayInput as unknown as BlobPart], 'gray.pdf', { type: 'application/pdf' });
+    const result = await compressPDF(file, 'high');
+    expect(result.blob.size).toBeLessThan(grayInput.length);
+    expect(result.blob.size / grayInput.length).toBeLessThan(0.5);
+    await expect(PDFDocument.load(await result.blob.arrayBuffer())).resolves.toBeTruthy();
+  });
+
+  it('duplicate pages are deduplicated: 5 identical pages compress near-single-page size', async () => {
+    const input = await createDupPdf(5);
+    const file = new File([input as unknown as BlobPart], 'dup.pdf', { type: 'application/pdf' });
+    const result = await compressPDF(file, 'high');
+    const singlePage = await createDupPdf(1);
+    expect(result.blob.size).toBeLessThan(input.length);
+    expect(result.blob.size / singlePage.length).toBeLessThan(1.6);
+  });
 });
+
+async function createGrayPdf(pages: number): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < pages; i++) {
+    const canvas = createCanvas(1200, 800);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#F0F0F0';
+    ctx.fillRect(0, 0, 1200, 800);
+    ctx.fillStyle = '#404040';
+    for (let j = 0; j < 30; j++) {
+      ctx.fillRect(Math.random() * 1100, Math.random() * 700, 80 + Math.random() * 60, 40 + Math.random() * 40);
+    }
+    ctx.font = 'bold 96px sans-serif';
+    ctx.fillText(`Page ${i + 1}`, 100, 150);
+    const imgData = ctx.getImageData(0, 0, 1200, 800);
+    const d = imgData.data;
+    for (let k = 0; k < d.length; k += 4) {
+      if (Math.random() < 0.06) {
+        const v = 128 + Math.floor(Math.random() * 80 - 40);
+        d[k] = v; d[k + 1] = v; d[k + 2] = v;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    const jpeg = canvas.toBuffer('image/jpeg', 95);
+    const img = await pdf.embedJpg(jpeg);
+    const page = pdf.addPage([612, 792]);
+    page.drawImage(img, { x: 50, y: 100, width: 512, height: 512 });
+  }
+  return pdf.save();
+}
+
+async function createDupPdf(pages: number): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  for (let i = 0; i < pages; i++) {
+    const canvas = createCanvas(1200, 800);
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 1200, 800);
+    grad.addColorStop(0, '#4A90D9');
+    grad.addColorStop(0.5, '#50E3C2');
+    grad.addColorStop(1, '#F5A623');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1200, 800);
+    ctx.fillStyle = '#1A237E';
+    for (let j = 0; j < 30; j++) {
+      ctx.fillRect(100 + (j * 137) % 900, 100 + (j * 97) % 500, 60 + (j * 13) % 50, 40 + (j * 11) % 40);
+    }
+    ctx.font = 'bold 72px sans-serif';
+    ctx.fillText('IDENTICAL', 350, 600);
+    const jpeg = canvas.toBuffer('image/jpeg', 95);
+    const img = await pdf.embedJpg(jpeg);
+    const page = pdf.addPage([612, 792]);
+    page.drawImage(img, { x: 50, y: 100, width: 512, height: 512 });
+  }
+  return pdf.save();
+}

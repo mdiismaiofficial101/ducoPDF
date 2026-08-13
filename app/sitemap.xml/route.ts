@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 const SITE_URL = 'https://cybronetwork.online';
 const BLOG_API_URL = 'https://img.cybronetwork.online/blogs-api.php';
 
+export const dynamic = 'force-dynamic';
+
 async function fetchDynamicUrls() {
   const urls: Array<{ url: string; lastModified: string; changeFrequency: string; priority: number }> = [];
 

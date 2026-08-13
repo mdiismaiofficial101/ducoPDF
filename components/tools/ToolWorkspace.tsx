@@ -251,11 +251,9 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
     setSignatureImage(canvas.toDataURL('image/png'));
   };
 
-  const handleExecute = async () => {
-    if (files.length === 0 && toolId !== 'html-to-pdf' && toolId !== 'scan-to-pdf') return;
-    setIsProcessing(true); setErrorMsg(null);
-    try {
-      let resultBlob: Blob | null = null;
+  const runSingle = async (batchFiles: File[]): Promise<{ blob: Blob; name: string }> => {
+    const files = batchFiles;
+    let resultBlob: Blob | null = null;
       let outName = 'processed.pdf';
       const { PDFDocument, rgb, degrees, StandardFonts } = await getPdfLib();
       const { default: jsPDF } = await getJsPDF();
@@ -587,12 +585,41 @@ p{margin:0;padding:0;}
         const bytes = await pdf.save(); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `signed_${files[0].name}`;
       }
 
-      if (resultBlob) {
+      if (!resultBlob) throw new Error('No result was produced.');
+      return { blob: resultBlob, name: outName };
+  };
+
+  const handleExecute = async () => {
+    if (files.length === 0 && toolId !== 'html-to-pdf' && toolId !== 'scan-to-pdf') return;
+    setIsProcessing(true); setErrorMsg(null);
+    try {
+      const BATCHABLE = ['compress', 'pdf-to-word', 'pdf-to-excel', 'pdf-to-ppt', 'pdf-to-markdown', 'pdf-translator', 'ocr-editable', 'watermark', 'smart-watermark', 'protect', 'unlock', 'rotate', 'page-numbers', 'crop', 'repair', 'pdf-to-pdfa', 'ocr'];
+      if (BATCHABLE.includes(toolId) && files.length > 1) {
+        const JSZip = (await getJSZip()).default;
+        const zip = new JSZip();
+        let failed = 0;
+        for (let i = 0; i < files.length; i++) {
+          setStepMessage(`Processing ${i + 1} of ${files.length}: ${files[i].name}`);
+          try {
+            const r = await runSingle([files[i]]);
+            zip.file(r.name, r.blob);
+          } catch (err) { failed++; console.error(err); }
+        }
+        if (failed === files.length) throw new Error('All files failed to process.');
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        setStepMessage('');
         if (resultUrl) URL.revokeObjectURL(resultUrl);
-        const url = URL.createObjectURL(resultBlob);
-        setResultUrl(url); setResultFileName(outName);
-        const sizeStr = `${(resultBlob.size / 1024 / 1024).toFixed(2)} MB`;
-        addProcessingHistory(tool.name, `${files.length || 1} source file(s) -> ${outName}`, sizeStr);
+        const url = URL.createObjectURL(zipBlob);
+        setResultUrl(url);
+        setResultFileName(`${toolId}_batch_${files.length}_files.zip`);
+        addProcessingHistory(tool.name, `${files.length - failed} of ${files.length} file(s) -> ${toolId}_batch_${files.length}_files.zip`, `${(zipBlob.size / 1024 / 1024).toFixed(2)} MB`);
+      } else {
+        const r = await runSingle(files);
+        if (resultUrl) URL.revokeObjectURL(resultUrl);
+        const url = URL.createObjectURL(r.blob);
+        setResultUrl(url);
+        setResultFileName(r.name);
+        addProcessingHistory(tool.name, `${files.length || 1} source file(s) -> ${r.name}`, `${(r.blob.size / 1024 / 1024).toFixed(2)} MB`);
       }
     } catch (err: any) {
       console.error(err); setErrorMsg(err.message || 'An error occurred.');
@@ -757,8 +784,8 @@ p{margin:0;padding:0;}
                       <div className="flex items-center space-x-4 p-4 border border-slate-200 bg-slate-50 rounded-2xl">
                         <div className="p-3 bg-indigo-50 text-[#1A237E] rounded-xl"><FileText className="w-8 h-8" /></div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-900 text-sm truncate">{files[0].name}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{(files[0].size / 1024 / 1024).toFixed(2)} MB</p>
+                          <p className="font-bold text-slate-900 text-sm truncate">{files.length > 1 ? `${files.length} files selected` : files[0].name}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{files.length > 1 ? `${(files.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(2)} MB total` : `${(files[0].size / 1024 / 1024).toFixed(2)} MB`}</p>
                         </div>
                       </div>
 
@@ -813,8 +840,8 @@ p{margin:0;padding:0;}
                       <div className="flex items-center space-x-4 p-4 border border-slate-200 bg-slate-50 rounded-2xl">
                         <div className="p-3 bg-indigo-50 text-[#1A237E] rounded-xl"><FileText className="w-8 h-8" /></div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-900 text-sm truncate">{files[0].name}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{(files[0].size / 1024 / 1024).toFixed(2)} MB</p>
+                          <p className="font-bold text-slate-900 text-sm truncate">{files.length > 1 ? `${files.length} files selected` : files[0].name}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{files.length > 1 ? `${(files.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(2)} MB total` : `${(files[0].size / 1024 / 1024).toFixed(2)} MB`}</p>
                         </div>
                       </div>
 
