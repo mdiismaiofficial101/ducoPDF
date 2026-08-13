@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { addProcessingHistory } from '@/lib/auth';
 import AdBanner from '@/components/AdBanner';
-import { compressPDF, pdfToWord, pdfToExcel, pdfToPpt, comparePDFs, ocrPdf, pdfToMarkdown, createPdfForm, FormFieldDef, executeWorkflow, WorkflowStep, translatePDF, ocrToEditablePDF, checkPasswordStrength, PasswordStrengthResult, generateResumePDF, ResumeData, applySmartWatermark, WatermarkConfig } from '@/lib/pdf-tools';
+import { compressPDF, pdfToWord, pdfToExcel, pdfToPpt, comparePDFs, ocrPdf, pdfToMarkdown, createPdfForm, FormFieldDef, executeWorkflow, WorkflowStep, translatePDF, ocrToEditablePDF, checkPasswordStrength, PasswordStrengthResult, generateResumePDF, ResumeData, applySmartWatermark, WatermarkConfig, redactPDF } from '@/lib/pdf-tools';
 import { needsUnicodeFont, registerUnicodeFontJsPDF, getUnicodeFontForPdfLib } from '@/lib/unicode-fonts';
 import { processForPdfRendering, needsRTLReordering } from '@/lib/bidi';
 
@@ -487,12 +487,9 @@ p{margin:0;padding:0;}
         } finally { document.body.removeChild(container); }
       }
       else if (toolId === 'redact') {
-        const buffer = await files[0].arrayBuffer(); const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
-        pdf.getPages().forEach((page) => {
-          const { width, height } = page.getSize();
-          page.drawRectangle({ x: 50, y: height - 120, width: width - 100, height: 40, color: rgb(0, 0, 0) });
-        });
-        const bytes = await pdf.save(); resultBlob = new Blob([bytes as any], { type: 'application/pdf' }); outName = `redacted_${files[0].name}`;
+        if (!redactWord.trim()) throw new Error('Please enter a word to redact.');
+        const r = await redactPDF(files[0], [redactWord.trim()]);
+        resultBlob = r.blob; outName = r.name;
       }
       else if (toolId === 'scan-to-pdf') {
         if (capturedImages.length === 0) throw new Error("Take at least one photo first.");
@@ -896,6 +893,12 @@ p{margin:0;padding:0;}
                   <input type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder="Watermark text" className="w-full p-3 border border-slate-200 rounded-xl text-sm" />
                   <div><label className="text-xs text-slate-500">Opacity: {Math.round(wmOpacity * 100)}%</label><input type="range" min={0.1} max={1} step={0.1} value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} className="w-full" /></div>
                   <div><label className="text-xs text-slate-500">Size: {wmSize}px</label><input type="range" min={12} max={120} value={wmSize} onChange={(e) => setWmSize(Number(e.target.value))} className="w-full" /></div>
+                </div>
+              ) : toolId === 'redact' ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                  <h3 className="font-bold text-slate-900 mb-3">Redact Words</h3>
+                  <input type="text" value={redactWord} onChange={(e) => setRedactWord(e.target.value)} placeholder="Enter a word to blackout (e.g. SECRET)" className="w-full p-3 border border-slate-200 rounded-xl text-sm" />
+                  <p className="text-xs text-slate-400 mt-2">Matching text is permanently removed — pages with matches are converted to images, so the text can no longer be copied or extracted.</p>
                 </div>
               ) : toolId === 'crop' ? (
                 <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">

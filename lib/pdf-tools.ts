@@ -66,7 +66,10 @@ export async function compressPDF(file: File, level: CompressLevel = 'medium'): 
     const settings = COMPRESS_SETTINGS[level];
     const outPdf = await PDFDocument.create();
     const pdfjsData = buffer.slice(0);
-    const srcDoc = await pdfjs.getDocument({ data: pdfjsData }).promise;
+    const standardFontsUrl = typeof window === 'undefined'
+      ? 'file:///' + process.cwd().replace(/\\/g, '/') + '/node_modules/pdfjs-dist/standard_fonts/'
+      : '/pdfjs-standard-fonts/';
+    const srcDoc = await pdfjs.getDocument({ data: pdfjsData, standardFontDataUrl: standardFontsUrl }).promise;
     const pageCount = Math.min(srcDoc.numPages, MAX_COMPRESS_PAGES);
     const imageDedup = new Map<string, any>();
 
@@ -143,6 +146,114 @@ export async function compressPDF(file: File, level: CompressLevel = 'medium'): 
 
   const blob = new Blob([best as unknown as BlobPart], { type: 'application/pdf' });
   return { blob, name: `compressed_${file.name}` };
+}
+
+// ─── REAL REDACT (BYTE-LEVEL) ─────────────────────────────────────────
+export interface RedactBox { page: number; x: number; y: number; width: number; height: number; }
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Find word bounding boxes on a pdfjs page (page coordinates, y from top).
+ * Uses the text content items and their transform matrices.
+ */
+function findTextBoxes(
+  items: Array<{ str?: string; transform?: number[]; width?: number; height?: number }>,
+  words: string[]
+): RedactBox[] {
+  const boxes: RedactBox[] = [];
+  const patterns = words.filter(Boolean).map(w => new RegExp(`\\b${escapeRegExp(w)}\\b`, 'gi'));
+  for (const item of items) {
+    const str = item.str || '';
+    if (!str) continue;
+    const matched = patterns.some(p => p.test(str));
+    if (!matched) continue;
+    const t = item.transform || [1, 0, 0, 1, 0, 0];
+    const w = item.width || 0;
+    const h = item.height || 0;
+    boxes.push({ page: 1, x: t[4], y: t[5], width: w * 1.05, height: h });
+  }
+  return boxes;
+}
+
+export async function redactPDF(file: File, words: string[]): Promise<{ blob: Blob; name: string }> {
+  const cleanWords = words.map(w => w.trim()).filter(Boolean);
+  if (cleanWords.length === 0) throw new Error('Enter at least one word to redact.');
+
+  const buffer = await file.arrayBuffer();
+  const pdfjs = await import('pdfjs-dist');
+  if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
+  }
+
+  const srcPdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
+  const outPdf = await PDFDocument.create();
+  const standardFontsUrl = typeof window === 'undefined'
+    ? 'file:///' + process.cwd().replace(/\\/g, '/') + '/node_modules/pdfjs-dist/standard_fonts/'
+    : '/pdfjs-standard-fonts/';
+  const srcDoc = await pdfjs.getDocument({ data: buffer.slice(0), standardFontDataUrl: standardFontsUrl }).promise;
+  const pageCount = Math.min(srcDoc.numPages, 200);
+  const RENDER_SCALE = 2;
+
+  for (let i = 1; i <= pageCount; i++) {
+    const page = await srcDoc.getPage(i);
+    const baseVp = page.getViewport({ scale: 1 });
+    const textContent = await page.getTextContent();
+    const boxes = findTextBoxes(textContent.items as any[], cleanWords);
+
+    if (boxes.length === 0) {
+      const [cp] = await outPdf.copyPages(srcPdf, [i - 1]);
+      outPdf.addPage(cp);
+      continue;
+    }
+
+    let scale = RENDER_SCALE;
+    const maxDim = Math.max(baseVp.width, baseVp.height) * scale;
+    if (maxDim > MAX_CANVAS_DIM) scale *= MAX_CANVAS_DIM / maxDim;
+
+    const vp = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      const [cp] = await outPdf.copyPages(srcPdf, [i - 1]);
+      outPdf.addPage(cp);
+      continue;
+    }
+
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    ctx.fillStyle = '#000000';
+    for (const box of boxes) {
+      const x = box.x * scale;
+      const yCanvas = (baseVp.height - box.y - box.height) * scale;
+      const w = Math.max(box.width * scale, 4);
+      const h = Math.max(box.height * scale * 1.15, 6);
+      ctx.fillRect(x, yCanvas, w, h);
+    }
+    const jpegBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    canvas.width = 0; canvas.height = 0;
+    if (!jpegBlob) {
+      const [cp] = await outPdf.copyPages(srcPdf, [i - 1]);
+      outPdf.addPage(cp);
+      continue;
+    }
+    const jpg = await outPdf.embedJpg(new Uint8Array(await jpegBlob.arrayBuffer()));
+    const newPage = outPdf.addPage([baseVp.width, baseVp.height]);
+    newPage.drawImage(jpg, { x: 0, y: 0, width: baseVp.width, height: baseVp.height });
+  }
+
+  if (pageCount < srcDoc.numPages) {
+    for (let i = pageCount + 1; i <= srcDoc.numPages; i++) {
+      const [cp] = await outPdf.copyPages(srcPdf, [i - 1]);
+      outPdf.addPage(cp);
+    }
+  }
+
+  const bytes = await outPdf.save({ useObjectStreams: true, addDefaultPage: false });
+  return { blob: new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' }), name: `redacted_${file.name}` };
 }
 
 // ─── REAL PDF TO WORD ────────────────────────────────────────────────
