@@ -224,17 +224,23 @@ export default function ToolWorkspace({ toolId: propToolId }: { toolId?: string 
     setCameraActive(false);
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#1A237E';
     const rect = canvas.getBoundingClientRect();
-    ctx.beginPath(); ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top); setIsDrawing(true);
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    canvas.setPointerCapture(e.pointerId);
+    ctx.beginPath(); ctx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); setIsDrawing(true);
   };
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return; const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const rect = canvas.getBoundingClientRect(); ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top); ctx.stroke();
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    ctx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY); ctx.stroke();
   };
   const clearCanvas = () => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -719,7 +725,7 @@ p{margin:0;padding:0;}
                   <div className="mb-6 space-y-4">
                     <h3 className="font-bold text-slate-800 text-sm">Draw Your Signature</h3>
                     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                      <canvas ref={canvasRef} width={500} height={200} className="w-full touch-none" onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={() => setIsDrawing(false)} onMouseLeave={() => setIsDrawing(false)} style={{background:'#fff'}} />
+                      <canvas ref={canvasRef} width={500} height={200} className="w-full touch-none" onPointerDown={startDrawing} onPointerMove={draw} onPointerUp={() => setIsDrawing(false)} onPointerLeave={() => setIsDrawing(false)} style={{background:'#fff'}} />
                     </div>
                     <div className="flex space-x-2">
                       <button onClick={clearCanvas} className="text-xs px-3 py-1.5 bg-slate-100 rounded-lg text-slate-600 font-bold cursor-pointer">Clear</button>
