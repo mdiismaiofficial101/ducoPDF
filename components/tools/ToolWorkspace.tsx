@@ -361,7 +361,7 @@ p{margin:0;padding:0;}
       }
       else if (toolId === 'pdf-to-jpg') {
         const buffer = await files[0].arrayBuffer(); const pdfjs = await import('pdfjs-dist');
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
         const pdf = await pdfjs.getDocument({ data: buffer }).promise; const zip = new JSZip();
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i); const viewport = page.getViewport({ scale: 2.0 });

@@ -59,9 +59,7 @@ export async function compressPDF(file: File, level: CompressLevel = 'medium'): 
   let imageCompressedBytes: Uint8Array | null = null;
   try {
     const pdfjs = await import('pdfjs-dist');
-    if (typeof window !== 'undefined') {
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
-    }
+    if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
     const settings = COMPRESS_SETTINGS[level];
     const outPdf = await PDFDocument.create();
@@ -184,9 +182,7 @@ export async function redactPDF(file: File, words: string[]): Promise<{ blob: Bl
 
   const buffer = await file.arrayBuffer();
   const pdfjs = await import('pdfjs-dist');
-  if (typeof window !== 'undefined') {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
-  }
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const srcPdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
   const outPdf = await PDFDocument.create();
@@ -335,9 +331,7 @@ function linesToParagraphs(lines: LayoutLine[], pageWidth: number): Array<{ runs
 
 export async function pdfToWord(file: File): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  if (typeof window !== 'undefined') {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
-  }
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer.slice(0) }).promise;
@@ -472,9 +466,7 @@ function detectTableGrid(tc: any): string[][] {
 
 export async function pdfToExcel(file: File): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  if (typeof window !== 'undefined') {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
-  }
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
@@ -505,7 +497,7 @@ export async function pdfToExcel(file: File): Promise<{ blob: Blob; name: string
 // ─── REAL PDF TO PPT ─────────────────────────────────────────────────
 export async function pdfToPpt(file: File): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
@@ -537,7 +529,7 @@ export async function pdfToPpt(file: File): Promise<{ blob: Blob; name: string }
 // ─── REAL PDF COMPARE ────────────────────────────────────────────────
 export async function comparePDFs(file1: File, file2: File): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const [buf1, buf2] = await Promise.all([file1.arrayBuffer(), file2.arrayBuffer()]);
   const [pdf1, pdf2] = await Promise.all([
@@ -663,9 +655,7 @@ export async function ocrPdf(
   languages?: string[]
 ): Promise<string> {
   const pdfjs = await import('pdfjs-dist');
-  if (typeof window !== 'undefined') {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
-  }
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const Tesseract = (await import('tesseract.js')).default;
   const buffer = await file.arrayBuffer();
@@ -892,7 +882,7 @@ export async function executeWorkflow(
 
 export async function pdfToMarkdown(file: File): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
@@ -933,7 +923,7 @@ export async function translatePDF(
   targetLang: string
 ): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
@@ -1016,9 +1006,7 @@ export async function ocrToEditablePDF(
   languages?: string[]
 ): Promise<{ blob: Blob; name: string }> {
   const pdfjs = await import('pdfjs-dist');
-  if (typeof window !== 'undefined') {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString();
-  }
+  if (typeof window !== 'undefined') { pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; }
 
   const Tesseract = (await import('tesseract.js')).default;
   const buffer = await file.arrayBuffer();
